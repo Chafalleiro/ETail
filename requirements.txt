@@ -1,0 +1,13 @@
+pygame>=2.0.0
+pyttsx3>=2.90
+
+Modules:
+
+tkinter
+os
+chardet
+threading
+time
+re
+json
+pathlib
