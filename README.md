@@ -1,0 +1,2 @@
+# ETail
+Entropia Universe Logging
