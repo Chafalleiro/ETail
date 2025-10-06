@@ -19,6 +19,7 @@ class LogTailApp:
     6       Filter added.
     7       Filter removed.
     8       Index out of bonds.
+    9       Sucess.
     """
     mssgs = ("Running",
     "Stopped",
@@ -28,7 +29,8 @@ class LogTailApp:
     "Detected file encoding: ",
     "Filter added.",
     "Filter removed.",
-    "Index out of bonds.")
+    "Index out of bonds.",
+    "Success")
     
     def __init__(self, root):
         self.root = root
@@ -392,4 +394,5 @@ class LogTailApp:
 if __name__ == "__main__":
     root = tk.Tk()
     app = LogTailApp(root)
+
     root = tk.mainloop()
