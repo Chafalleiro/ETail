@@ -13,6 +13,21 @@ import pygame
 import pyttsx3
 import platform
 
+
+"""A Tuple of fixed messages coded by index.
+Set as global to be used anywhere.
+index   string
+0       Running
+1       Stopped
+2       Ready
+3       Error
+4       Paused
+5       Detected file encoding:
+6       Filter added.
+7       Filter removed.
+8       Index out of bonds.
+9       Sucess.
+"""
 mssgs = ("Running",
 "Stopped",
 "Ready",
@@ -81,9 +96,9 @@ class ConfigManager:
         except Exception as e:
             print(f"Error saving config: {e}")
             return False
-    
+
+    #Update a recent files list, maintaining max entries
     def update_recent_list(self, list_name, file_path, max_entries=5):
-        """Update a recent files list, maintaining max entries"""
         if file_path and os.path.exists(file_path):
             if list_name not in self.config:
                 self.config[list_name] = []
@@ -97,7 +112,7 @@ class ConfigManager:
             
             # Trim to max entries
             self.config[list_name] = self.config[list_name][:max_entries]
-    
+
     def get(self, key, default=None):
         return self.config.get(key, default)
     
@@ -119,17 +134,39 @@ class ActionHandler:
         """Initialize text-to-speech engine"""
         try:
             self.tts_engine = pyttsx3.init("sapi5")
-            self.voices = self.tts_engine.getProperty('voices')
-            for voice in self.voices:
-                print(f"voices: {voice.id}")
-                print(f"voices: {voice.name}")
             # Set speech properties
             self.tts_engine.setProperty('rate', 150)
             self.tts_engine.setProperty('volume', 0.8)          
         except Exception as e:
             print(f"TTS initialization failed: {e}")
             self.tts_engine = None
-    
+
+    def get_available_voices(self):
+        """Get available voices from pyttsx3 and return formatted list"""
+        try:
+            if not self.tts_engine:
+                self.init_tts_engine()
+
+            voices = self.tts_engine.getProperty('voices')
+            voice_list = []
+            for i, voice in enumerate(voices):
+                # Extract voice name - format varies by platform
+                try:
+                    voice_name = voice.name
+                except AttributeError:
+                    voice_name = f"Voice {i+1}"
+
+                voice_info = {
+                    'id': voice.id,
+                    'name': voice_name,
+                    'index': i
+                }
+                voice_list.append(voice_info)     
+            return voice_list
+        except Exception as e:
+            print(f"Error getting voices: {e}")
+            return []
+
     def init_sound(self):
         """Initialize pygame mixer for sound playback"""
         try:
@@ -145,8 +182,7 @@ class ActionHandler:
             if action == "sound" and modifier:
                 self.play_sound(modifier)
             elif action == "tts":
-                text = modifier if modifier else line_content
-                self.speak_text(text)
+                self.speak_text(modifier[0],modifier[1])
             elif action == "skip":
                 return True  # Signal to skip this line
             elif action == "notification" and modifier:
@@ -173,7 +209,7 @@ class ActionHandler:
         sound_thread = threading.Thread(target=_play_sound, daemon=True)
         sound_thread.start()
     
-    def speak_text(self, text):
+    def speak_text(self, text, voice):
         """Speak text using TTS in a separate thread"""
         def _speak():
             try:
@@ -181,11 +217,11 @@ class ActionHandler:
                     self.tts_engine.startLoop(False)
                     if self.tts_engine._inLoop:
                         self.tts_engine.endLoop()
-                    self.tts_engine.setProperty('voice', self.voices[1].id)
+                    self.tts_engine.setProperty('voice', voice)
                     self.tts_engine.say(text)
                     self.tts_engine.runAndWait()
             except Exception as e:
-                print(f"TTS error: {e} filter: {text} 5")
+                print(f"TTS error: {e} filter: {text}")
         tts_thread = threading.Thread(target=_speak, daemon=True)
         tts_thread.start()
     
@@ -198,30 +234,15 @@ class ActionHandler:
         """Show a dialog window"""
         self.root.after(0, lambda: messagebox.showwarning("ETail Alert", message))
 
-class LogTailApp:
 # ****************************************************************************
 # *************************** Inits*******************************************
 # ****************************************************************************
-
-    """A Tuple of fixed messages coded by index.
-    Set as global to be used anywhere.
-    index   string
-    0       Running
-    1       Stopped
-    2       Ready
-    3       Error
-    4       Paused
-    5       Detected file encoding:
-    6       Filter added.
-    7       Filter removed.
-    8       Index out of bonds.
-    9       Sucess.
-    """
-    
+class LogTailApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Etail 0.3")
         root.iconbitmap('Etail.ico')
+        root.minsize(900, 100)
         
         # Initialize configuration manager
         self.config_manager = ConfigManager()
@@ -240,22 +261,6 @@ class LogTailApp:
         if self.config_manager.get("auto_load_config", True):
             self.load_configuration()
     def messages(self,par_1,par_2,par_3):
-        """
-        Display controlled status and error messages
-        First arg is the index of the message.
-        If "Custom" is passed then second arg is a string with the message to display.
-        
-        Second arg where to display
-        0 - Console
-        1 - Status bar
-        2 - Both
-        
-        Third is a aditional variable for messages, filename, line, or other runtime info.
-        
-        Example:
-        self.test = "test"
-        self.messages(2,2,f"reading last lines:{self.test}")
-        """
         self.str_out = f"{mssgs[par_2]} {par_3}"
         match par_1:
             case 0:
@@ -266,9 +271,9 @@ class LogTailApp:
                 print(self.str_out)
                 self.update_status(self.str_out)
 
-# *********************************************************************
+    # *********************************************************************
+    #Initialize the encoding detection function."""
     def setup_encoding_detector(self):
-        """Initialize the encoding detection function."""
         self.detect_encoding = self.simple_encoding_detect
 
     def simple_encoding_detect(self, file_path):
@@ -324,12 +329,12 @@ class LogTailApp:
         except Exception as e:
             self.messages(2,3,f"Error reading last lines: {e}")
             return []
-# *********************************************************************
-# ****************************************************************************
-# *************************** Screen******************************************
-# ****************************************************************************   
+    # *********************************************************************
+    # ****************************************************************************
+    # *************************** Screen******************************************
+    # ****************************************************************************   
     def create_widgets(self):
-        """Create and arrange the GUI components with tabs."""
+        #"""Create and arrange the GUI components with tabs."""
         # Create notebook (tab container)
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -347,20 +352,20 @@ class LogTailApp:
         self.create_config_tab()
         self.create_simple_filters_tab()
         self.create_status_bar()
-# ****************************************************************************
+    # ****************************************************************************
     def create_status_bar(self):
         # Create status bar
         self.status_var = tk.StringVar()
         self.status_var.set("Ready")
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor=tk.W)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-# ****************************************************************************
+    # ****************************************************************************
     def update_status(self, message):
         self.status_var.set(message)
         self.root.update_idletasks()
-# ****************************************************************************
+    # ****************************************************************************
     def create_log_tab(self):
-        """Create log viewing tab content."""
+        #Create log viewing tab content.
         # Controls frame at top of log tab
         controls_frame = ttk.Frame(self.log_tab)
         controls_frame.pack(fill=tk.X, padx=5, pady=5)
@@ -391,9 +396,10 @@ class LogTailApp:
     
         # Configure default text tag
         self.log_text.tag_configure("default", foreground="black")
+
 # ****************************************************************************
     def create_simple_filters_tab(self):
-        """Create simple filters tab content."""
+        #Create simple filters tab content.
         main_frame = ttk.Frame(self.simple_filters_tab)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         # ENHANCED FILTER CONFIGURATION SECTION
@@ -436,14 +442,28 @@ class LogTailApp:
         self.action_modifier_entry.grid(row=3, column=1, columnspan=2, padx=(0, 10), pady=2, sticky="w")
         
         # Sound file browser (initially hidden)
-        self.browse_sound_btn = ttk.Button(filter_frame, text="Browse Sound", 
-                                          command=self.browse_sound_file)
+        self.browse_sound_btn = ttk.Button(filter_frame, text="Browse Sound", command=self.browse_sound_file)
         self.browse_sound_btn.grid(row=3, column=3, padx=(5, 0), pady=2)
         self.browse_sound_btn.grid_remove()  # Hide initially
+ 
+        # Voice selection for TTS actions (using Combobox instead of Listbox)
+        ttk.Label(filter_frame, text="TTS Voice:").grid(row=4, column=0, sticky="w", padx=(0, 5), pady=2)
+    
+        # Combobox for voice selection
+        self.voice_combobox = ttk.Combobox(filter_frame, state="readonly", width=40)
+        self.voice_combobox.grid(row=3, column=3, columnspan=2, sticky="w", pady=2)
+        self.voice_combobox.grid_remove()  # Hide initially
+        
+        # Load available voices
+        self.refresh_voices()
+    
+        # Test voice button
+        self.test_voice_btn = ttk.Button(filter_frame, text="Test Voice", command=self.test_selected_voice)
+        self.test_voice_btn.grid(row=3, column=5, padx=(5, 0), pady=2)
+        self.test_voice_btn.grid_remove()  # Hide initially
         
         # Add filter button
-        ttk.Button(filter_frame, text="Add Filter", 
-                  command=self.add_enhanced_filter).grid(row=4, column=0, pady=10, sticky="w")
+        ttk.Button(filter_frame, text="Add Filter", command=self.add_enhanced_filter).grid(row=4, column=0, pady=10, sticky="w")
         
         # Filter list display
         listbox_frame = ttk.Frame(filter_frame)
@@ -535,7 +555,7 @@ class LogTailApp:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Button(button_frame, text="Save Configuration", command=self.save_configuration).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Save Configuration", command=self.save_configuration_dialog).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Load Configuration", command=self.load_configuration_file).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_configuration).pack(side=tk.LEFT)
 # ****************************************************************************
@@ -606,12 +626,63 @@ class LogTailApp:
 # *************************** Filter Actions**********************************
 # ****************************************************************************
 
+    def refresh_voices(self):
+        """Populate the voice combobox with available voices"""
+        self.available_voices = self.action_handler.get_available_voices()
+
+    # Create display names for the combobox
+        voice_names = []
+        for voice_info in self.available_voices:
+            voice_names.append(voice_info['name'])
+
+        # Update combobox values
+        self.voice_combobox['values'] = voice_names
+
+        # Auto-select first voice if available
+        if voice_names:
+            self.voice_combobox.set(voice_names[0])
+
+    def get_selected_voice_id(self):
+        """Get the voice ID of the currently selected voice from combobox"""
+        selected_name = self.voice_combobox.get()
+        self.messages(2,2,f"Voice selected: {selected_name}")
+        if selected_name and self.available_voices:
+            for voice_info in self.available_voices:
+                if voice_info['name'] == selected_name:
+                    return voice_info['id']
+        return None
+
+    def test_selected_voice(self):
+        """Test the selected voice with sample text"""
+        voice_id = self.get_selected_voice_id()
+        if voice_id and self.action_handler.tts_engine:
+            # Use threading to prevent GUI freezing :cite[9]
+            import threading
+            def speak_test():
+                try:
+                    if self.action_handler.tts_engine:
+                        self.action_handler.tts_engine.startLoop(False)
+                        if self.action_handler.tts_engine._inLoop:
+                            self.action_handler.tts_engine.endLoop()
+                        self.original_voice = self.action_handler.tts_engine.getProperty('voice')
+                        self.action_handler.tts_engine.setProperty('voice', voice_id)
+                        self.action_handler.tts_engine.say("This is a test of the selected voice")
+                        self.action_handler.tts_engine.runAndWait()                 
+                        self.action_handler.tts_engine.setProperty('voice', self.original_voice)
+                except Exception as e:
+                    self.messages(2,3,f"TTS: {e} voice: {voice_id}")
+            thread = threading.Thread(target=speak_test)
+            thread.daemon = True
+            thread.start()
+
     def on_action_changed(self, event=None):
         """Show/hide relevant controls based on selected action"""
         action = self.filter_action_var.get()
         
-        # Hide sound browser by default
+        # Hide sound, tts and other by default
         self.browse_sound_btn.grid_remove()
+        self.voice_combobox.grid_remove()
+        self.test_voice_btn.grid_remove()
         
         # Clear modifier field
         self.filter_action_modifier.set("")
@@ -622,6 +693,8 @@ class LogTailApp:
             self.action_modifier_entry.config(state="normal")
             self.filter_action_modifier.set("Click 'Browse Sound' or enter file path")
         elif action == "tts":
+            self.voice_combobox.grid()  # Show voice selection for TTS
+            self.test_voice_btn.grid()
             self.action_modifier_entry.config(state="normal")
             self.filter_action_modifier.set("Text to speak when filter matches")
         elif action == "notification":
@@ -655,21 +728,16 @@ class LogTailApp:
         bg = self.bg_color.get().strip()
         action = self.filter_action_var.get()
         action_modifier = self.filter_action_modifier.get().strip()
-        
+    
         if not filter_pattern:
-            self.messages(2,3,"Filter pattern cannot be empty")
+            self.messages(2,3,f"Filter pattern cannot be empty")
             return
-        
-        # Validate sound file exists for sound action
-        if action == "sound" and action_modifier and not os.path.exists(action_modifier):
-            self.messages(2,3,f"Sound file not found: {action_modifier}")
-            return
-        
-        # Create unique key for the filter (pattern + action to allow duplicates with different actions)
+    
+        # Create unique key for the filter
         filter_key = f"{filter_pattern}|{action}|{action_modifier}"
-        
-        # Store the enhanced filter
-        self.filters[filter_key] = {
+    
+        # Prepare filter data
+        filter_data = {
             'pattern': filter_pattern,
             'is_regex': self.filter_regex_var.get(),
             'fg_color': fg,
@@ -677,26 +745,43 @@ class LogTailApp:
             'action': action,
             'action_modifier': action_modifier
         }
-        
+    
+        # Add voice ID for TTS actions
+        if action == "tts":
+            voice_id = self.get_selected_voice_id()
+            if voice_id:
+                filter_data['voice_id'] = voice_id
+    
+        # Store the enhanced filter
+        self.filters[filter_key] = filter_data
+    
         # Update the listbox display
         action_display = action if action != "none" else "color only"
         modifier_display = f" ({action_modifier})" if action_modifier else ""
+    
+        # Add voice info to display for TTS filters
+        if action == "tts" and voice_id:
+            voice_name = self.voice_combobox.get()
+            modifier_display += f" [Voice: {voice_name}]"
+    
         display_text = f"{filter_pattern} → {action_display}{modifier_display}"
         self.filter_listbox.insert(tk.END, display_text)
-        
+    
         # Configure text widget tag for coloring
         self.log_text.tag_configure(filter_key, foreground=fg, background=bg)
-        
+    
         # Save filters to file
         self.save_filters()
-        
+    
         # Clear input fields
         self.filter_string.set("")
         self.filter_action_var.set("none")
         self.filter_action_modifier.set("")
         self.on_action_changed()  # Reset UI state
-
+    
         self.messages(2,9,f"Filter added: {filter_pattern}")
+ 
+ 
  
     def remove_enhanced_filter(self):
         """Remove the selected enhanced filter"""
@@ -720,21 +805,19 @@ class LogTailApp:
             
             # Save changes
             self.save_filters()
-            
-            self.show_status_message("Filter removed", "success")
-            
+            self.messages(2,9,"Filter removed")
+
         except IndexError:
-            self.show_status_message("No filter selected or invalid selection", "error")
+            self.messages(2,3,"No filter selected or invalid selection")
         except Exception as e:
-            self.show_status_message(f"Error removing filter: {e}", "error")
-    
+            self.messages(2,3,f"Error removing filter: {e}")
     def save_filters(self):
         """Save current filters to the configured filters file"""
         filters_file = self.filters_file_var.get()
         if not filters_file:
             self.messages(2,3,"No filters file configured")
-            return
-        
+            return   
+
         try:
             filters_data = {
                 "version": "1.1",
@@ -748,9 +831,9 @@ class LogTailApp:
             self.config_manager.update_recent_list("recent_filters", filters_file)
             self.update_recent_combos()
             
-            self.show_status_message("Filters saved successfully", "success")
+            self.messages(2,9,"Filters saved successfully")
         except Exception as e:
-            self.show_status_message(f"Error saving filters: {e}", "error")
+            self.messages(2,3,f"Error saving filters: {e}")
     
     def load_filters(self):
         """Load filters from the configured filters file"""
@@ -841,8 +924,42 @@ class LogTailApp:
         selected_file = self.recent_adv_filters_combo.get()
         if selected_file and os.path.exists(selected_file):
             self.advanced_filters_file_var.set(selected_file)
+
+    def save_configuration_dialog(self):
+        """Open a save dialog to choose configuration file location"""
+        try:
+            # Set up file types
+            file_types = [
+                ('JSON files', '*.json'),
+                ('All Files', '*.*')
+            ]
+        
+            # Get current directory from config manager if available
+            initial_dir = self.config_manager.get("last_directory", "")
+            
+            # Open save file dialog
+            filename = filedialog.asksaveasfilename(
+                title="Save Configuration As",
+                defaultextension=".json",
+                filetypes=file_types,
+                initialdir=initial_dir,
+                initialfile="etail_config.json"  # Default file name
+            )
+        
+            if filename:
+                # Update last directory in config
+                self.config_manager.set("last_directory", str(Path(filename).parent))
+                
+                # Call your existing save logic
+                if self.save_configuration(filename):
+                    self.show_status_message(f"Configuration saved to {filename}", "success")
+                else:
+                    self.show_status_message("Failed to save configuration", "error")
+                    
+        except Exception as e:
+            self.show_status_message(f"Error saving file: {e}", "error")
     
-    def save_configuration(self):
+    def save_configuration(self,filename):
         """Save current configuration to file"""
         # Update config manager with current values
         self.config_manager.set("log_file", self.log_file_var.get())
@@ -853,8 +970,7 @@ class LogTailApp:
             self.config_manager.set("initial_lines", int(self.initial_lines_var.get()))
         except ValueError:
             self.messages(2,3,f"Invalid initial lines value.")
-            return
-        
+            return     
         try:
             self.config_manager.set("refresh_interval", int(self.refresh_interval_var.get()))
         except ValueError:
@@ -862,7 +978,7 @@ class LogTailApp:
             return
         
         self.config_manager.set("auto_load_config", self.auto_load_var.get())
-        
+        self.config_manager.config_file = filename
         if self.config_manager.save_config():
             self.messages(2,9,f"Configuration saved successfully")
         else:
@@ -1016,7 +1132,7 @@ class LogTailApp:
         return False
     
     def apply_filters_and_actions(self, line):
-        """Apply coloring and execute actions for matching filters"""
+        #Apply coloring and execute actions for matching filters
         start_index = self.log_text.index("end-2l")
         end_index = self.log_text.index("end-1c")
         
@@ -1029,6 +1145,9 @@ class LogTailApp:
                 action = filter_data.get('action', 'none')
                 if action != 'skip' and action != 'none':
                     modifier = filter_data.get('action_modifier', '')
+                    if action == "tts":
+                        voice = filter_data.get('voice_id', '')
+                        modifier = (filter_data.get('action_modifier', ''), filter_data.get('voice_id', ''))
                     self.action_handler.execute_action(action, modifier, line)
     
     def line_matches_filter(self, line, filter_data):
