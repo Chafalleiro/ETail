@@ -47,8 +47,16 @@ class ConfigManager:
     def __init__(self, config_file="~/.etail/config.json"):
         self.config_file = Path(config_file).expanduser()
         self.config_file.parent.mkdir(parents=True, exist_ok=True)
+#        self.config = self.load_default_config()
+#        self.load_config()
+
+        # File to track last used configuration
+        self.last_config_tracker = self.config_file.parent / "last_config.txt"
+        
         self.config = self.load_default_config()
-        self.load_config()
+        
+        # Try to load last used config, fall back to default
+        self.load_last_configuration()
         
     def __getitem__(self, key):
         """Allow dictionary-style access: config_manager['log_file']"""
@@ -58,6 +66,66 @@ class ConfigManager:
         """Allow dictionary-style assignment: config_manager['log_file'] = 'path'"""
         self.config[key] = value
 
+    def get_last_config_path(self):
+        """Get the path of the last used configuration file"""
+        try:
+            if self.last_config_tracker.exists():
+                with open(self.last_config_tracker, 'r', encoding='utf-8') as f:
+                    last_config_path = f.read().strip()
+                    if last_config_path and Path(last_config_path).exists():
+                        return last_config_path
+            return None
+        except Exception as e:
+            print(f"Error reading last config tracker: {e}")
+            return None
+    
+    def set_last_config_path(self, config_path):
+        """Update the last configuration file path"""
+        try:
+            with open(self.last_config_tracker, 'w', encoding='utf-8') as f:
+                f.write(str(config_path))
+            return True
+        except Exception as e:
+            print(f"Error setting last config path: {e}")
+            return False
+    
+    def load_last_configuration(self):
+        """Load the last used configuration file"""
+        last_config_path = self.get_last_config_path()
+        
+        if last_config_path:
+            try:
+                print(f"Loading last configuration: {last_config_path}")
+                with open(last_config_path, 'r', encoding='utf-8') as f:
+                    loaded_config = json.load(f)
+                    self.config.update(loaded_config)
+                    self.config_file = Path(last_config_path)  # Update current config file
+                print("Last configuration loaded successfully")
+                return True
+            except Exception as e:
+                print(f"Error loading last configuration: {e}, falling back to defaults")
+                # Fall back to default config file
+                self.load_default_config_file()
+        else:
+            # No last config, try to load default config file
+            self.load_default_config_file()
+        
+        return False
+    
+    def load_default_config_file(self):
+        """Load the default configuration file if it exists"""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    loaded_config = json.load(f)
+                    self.config.update(loaded_config)
+                print("Default configuration loaded successfully")
+                return True
+        except Exception as e:
+            print(f"Error loading default config: {e}")
+        
+        return False
+   
     def load_default_config(self):
         """Return default configuration values"""
         return {
@@ -74,24 +142,38 @@ class ConfigManager:
     
     def load_config(self):
         """Load configuration from file"""
+        print(f"self.config_file 0 {self.config_file}")
         try:
             if self.config_file.exists():
+                print(f"self.config_file 1 {self.config_file}")
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     loaded_config = json.load(f)
                     # Update default config with loaded values
                     self.config.update(loaded_config)
                     print(f"Configuration loaded successfully")
             else:
+                print(f"self.config_file 2 {self.config_file}")
                 print(f"Default configuration loaded successfully")
         except Exception as e:
+            print(f"self.config_file 3 {self.config_file}")
             print(f"Error loading config:, {e} using defaults")
     
-    def save_config(self):
-        """Save current configuration to file"""
+    def save_config(self, config_path=None):
+        """Save current configuration to file and update last config tracker"""
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
+            # Use provided path or current config file
+            save_path = Path(config_path) if config_path else self.config_file
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
-            print(f"Configuration saved successfully")
+            
+            # Update the last config tracker
+            self.set_last_config_path(save_path)
+            
+            # Update current config file reference
+            self.config_file = save_path
+            
+            print(f"Configuration saved to: {save_path}")
             return True
         except Exception as e:
             print(f"Error saving config: {e}")
@@ -951,13 +1033,14 @@ class LogTailApp:
                 self.config_manager.set("last_directory", str(Path(filename).parent))
                 
                 # Call your existing save logic
+                pp = self.save_configuration(filename)
                 if self.save_configuration(filename):
-                    self.show_status_message(f"Configuration saved to {filename}", "success")
+                    self.messages(2,9,f"Configuration saved to {filename}")
                 else:
-                    self.show_status_message("Failed to save configuration", "error")
+                    self.messages(2,3,"Failed to save configuration 1035")
                     
         except Exception as e:
-            self.show_status_message(f"Error saving file: {e}", "error")
+            self.messages(2,3,f"Error saving file: {e}")
     
     def save_configuration(self,filename):
         """Save current configuration to file"""
@@ -970,17 +1053,18 @@ class LogTailApp:
             self.config_manager.set("initial_lines", int(self.initial_lines_var.get()))
         except ValueError:
             self.messages(2,3,f"Invalid initial lines value.")
-            return     
+            return False
         try:
             self.config_manager.set("refresh_interval", int(self.refresh_interval_var.get()))
         except ValueError:
             self.messages(2,3,f"Invalid refresh interval")
-            return
+            return False
         
         self.config_manager.set("auto_load_config", self.auto_load_var.get())
         self.config_manager.config_file = filename
         if self.config_manager.save_config():
             self.messages(2,9,f"Configuration saved successfully")
+            return True
         else:
             self.messages(2,3,f" saving configuration")
 
@@ -996,6 +1080,7 @@ class LogTailApp:
             with open(filename, 'r', encoding='utf-8') as f:
                 a_config = json.load(f)
             # Update default config with loaded values
+            self.config_manager.config_file = Path(filename)
             self.config_manager.config.update(a_config)
             self.load_configuration()
 
@@ -1026,7 +1111,6 @@ class LogTailApp:
         """Start tailing the log file in a separate thread."""
         filepath = self.config_manager.get("log_file", "")
         if not filepath or not os.path.exists(filepath):
-            messages(0,1)
             self.messages(2,3,f"File {filepath} can't be accessed.")
             return
         
