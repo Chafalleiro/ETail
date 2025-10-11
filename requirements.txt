@@ -11,3 +11,5 @@ time
 re
 json
 pathlib
+plyer
+py -m pip install pygame pyttsx3 plyer
