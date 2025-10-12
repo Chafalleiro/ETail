@@ -1,0 +1,17 @@
+pygame>=2.0.0
+pyttsx3>=2.90
+plyer>=2.0.0
+
+py -m pip install pygame pyttsx3 plyer
+
+Modules:
+
+tkinter
+os
+chardet
+threading
+time
+re
+json
+pathlib
+
