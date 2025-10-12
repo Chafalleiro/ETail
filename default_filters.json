@@ -1,0 +1,13 @@
+{
+  "version": "1.1",
+  "filters": [
+    {
+      "pattern": "Default filter",
+      "is_regex": false,
+      "fg_color": "black",
+      "bg_color": "yellow",
+      "action": "none",
+      "action_modifier": ""
+    }
+  ]
+}
