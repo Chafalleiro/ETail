@@ -1,0 +1,13 @@
+ocr_plugin/
+├── __init__.py
+├── ocr_plugin.py
+├── ocr_modules/
+│   ├── __init__.py
+│   ├── capture.py
+│   ├── config.py
+│   ├── region_selector.py
+│   └── ui/
+│       ├── __init__.py
+│       ├── settings_tabs.py
+│       └── ui_components.py
+└── setup.py

@@ -1,8 +1,34 @@
-from etail_plugin import ETailPlugin
+try:
+    # Try to import from plugins package (source mode)
+    from plugins.etail_plugin import ETailPlugin
+except ImportError:
+    try:
+        # Try direct import (compiled mode)
+        from etail_plugin import ETailPlugin
+    except ImportError:
+        # Fallback: define it here
+        from abc import ABC, abstractmethod
+        class ETailPlugin(ABC):
+            def __init__(self, app):
+                self.app = app
+                self.name = "Unnamed Plugin"
+                self.version = "1.0" 
+                self.description = "No description provided"
+                self.enabled = False
+                
+            @abstractmethod
+            def setup(self): pass
+                
+            @abstractmethod 
+            def teardown(self): pass
+
 import tkinter as tk
 from tkinter import ttk
 
 class SamplePlugin(ETailPlugin):
+    # ADD THIS FLAG - it's what the plugin manager looks for
+    is_etail_plugin = True
+    
     def __init__(self, app):
         super().__init__(app)
         self.name = "Sample Plugin"

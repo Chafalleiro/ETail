@@ -35,6 +35,14 @@ import pygame
 import pyttsx3
 import importlib
 import inspect
+try:
+    from plyer import notification
+    HAS_SYSTEM_NOTIFICATIONS = True
+    print("Plyer available for system notifications")
+except ImportError:
+    HAS_SYSTEM_NOTIFICATIONS = False
+    print("Plyer not available for system notifications")
+
 from abc import ABC, abstractmethod
 
 """A Tuple of fixed messages coded by index.
@@ -84,7 +92,7 @@ class PluginManager:
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
         
     def discover_plugins(self):
-        """Discover available plugins using duck typing"""
+        """Discover available plugins using duck typing - FIXED FOR COMPILED PLUGINS"""
         self.plugins.clear()
 
         print(f"DEBUG: Looking for plugins in: {self.plugins_dir.absolute()}")
@@ -99,15 +107,30 @@ class PluginManager:
             sys.path.insert(0, plugins_path)
             print(f"DEBUG: Added to Python path: {plugins_path}")
 
-        plugin_files = list(self.plugins_dir.glob("*.py"))
-        print(f"DEBUG: Found {len(plugin_files)} Python files: {[f.name for f in plugin_files]}")
+        # Look for BOTH .py AND .pyd files
+        python_files = list(self.plugins_dir.glob("*.py"))
+        compiled_files = list(self.plugins_dir.glob("*.pyd"))
+        plugin_files = python_files + compiled_files
+    
+        print(f"DEBUG: Found {len(python_files)} Python files and {len(compiled_files)} compiled files")
+        print(f"DEBUG: All plugin files: {[f.name for f in plugin_files]}")
 
         for file_path in plugin_files:
-            if file_path.name.startswith("_") or file_path.name == "etail_plugin.py":
+            # Skip interface file and __init__ in both source and compiled forms
+            if (file_path.name.startswith("_") or 
+                file_path.stem == "etail_plugin"):  # This handles both .py and .pyd
                 continue
 
-            plugin_name = file_path.stem
-            print(f"DEBUG: Processing plugin file: {plugin_name}")
+            # Extract the base module name from compiled files
+            if file_path.suffix == '.pyd':
+                # For compiled files: sample_plugin.cp313-win_amd64.pyd -> sample_plugin
+                plugin_name = file_path.name.split('.')[0]  # Take first part before any dots
+                print(f"DEBUG: Compiled plugin detected, using base name: {plugin_name}")
+            else:
+                # For source files: sample_plugin.py -> sample_plugin
+                plugin_name = file_path.stem
+
+            print(f"DEBUG: Processing plugin: {plugin_name} from {file_path.name}")
 
             try:
                 # Use import_module for proper import resolution
@@ -553,7 +576,7 @@ class ActionHandler:
                 # Fallback to tkinter messagebox
                 self.root.after(0, lambda: messagebox.showinfo("ETail Notification", message))
         except Exception as e:
-            print(f"System notification failed: {e}")
+            print(f"Etail Says - System notification failed: {e}")
             # Fallback
             self.root.after(0, lambda: messagebox.showinfo("ETail Notification", message))
     
@@ -568,8 +591,10 @@ class ActionHandler:
 class LogTailApp:
     def __init__(self, root):
         self.root = root
+        icon_path = self.resource_path("Etail.ico")
+        self.root.wm_iconbitmap(icon_path)
         self.root.title("Etail 0.2")
-        root.iconbitmap('Etail.ico')
+        #root.iconbitmap('Etail.ico')
         root.minsize(900, 100)
         
         # Apply modern styling first
@@ -638,6 +663,14 @@ class LogTailApp:
             self.messages(2, 9, "Plugin system initialized")
         except Exception as e:
             self.messages(2, 3, f"Plugin system failed: {e}")
+
+    def resource_path(self, relative_path):
+        """Get absolute path to resource, works for dev and for PyInstaller"""
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, relative_path)
 
     def auto_load_filters(self):
         """Automatically load filters file if it exists and auto-load is enabled"""
