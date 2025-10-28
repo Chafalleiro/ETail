@@ -24,6 +24,12 @@ except ImportError:
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext, messagebox
 from tkinter.colorchooser import askcolor
+import pyautogui #needed by OCR
+from PIL import Image, ImageTk, ImageEnhance, ImageFilter #needed by OCR
+import win32gui #needed by OCR
+import win32ui #needed by OCR
+import win32con #needed by OCR
+import win32process #needed by OCR
 import os
 import chardet
 import threading
@@ -34,7 +40,12 @@ import json
 import pygame
 import pyttsx3
 import importlib
+import importlib.util
 import inspect
+import zipfile
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+
 try:
     from plyer import notification
     HAS_SYSTEM_NOTIFICATIONS = True
@@ -74,12 +85,404 @@ mssgs = ("Running",
 # *************************** Plugin Manager ********************************
 # ****************************************************************************
 
+class PluginDependencyLoader:
+    """
+    Handles loading of compiled plugins and their dependencies
+    for the main compiled executable
+    """
+    
+    def __init__(self, app):
+        self.app = app
+        self.loaded_dependencies = set()
+        self.plugin_base_path = self.get_plugin_base_path()
+        
+    def get_plugin_base_path(self) -> Path:
+        """Get the base path for plugins based on executable location"""
+        if getattr(sys, 'frozen', False):
+            # Running as compiled executable
+            base_dir = Path(sys.executable).parent
+        else:
+            # Running from script
+            base_dir = Path(__file__).parent
+        
+        return base_dir / "plugins"
+
+    def discover_compiled_plugins(self) -> Dict[str, Dict]:
+        """Discover compiled plugins with platform information - REPLACES OLD METHOD"""
+        plugins_info = {}
+        
+        if not self.plugin_base_path.exists():
+            self.app.messages(2, 3, f"Plugin directory not found: {self.plugin_base_path}")
+            return plugins_info
+        
+        pyd_files = list(self.plugin_base_path.glob("*.pyd"))
+        
+        print(f"DEBUG: Found {len(pyd_files)} .pyd files: {[f.name for f in pyd_files]}")
+        
+        for pyd_file in pyd_files:
+            full_stem = pyd_file.stem
+            parts = full_stem.split('.')
+            base_name = parts[0]
+            
+            platform_info = "unknown"
+            if len(parts) > 1:
+                platform_info = parts[1]  # e.g., "cp313-win_amd64"
+            
+            plugins_info[base_name] = {
+                'base_name': base_name,
+                'full_stem': full_stem,
+                'filename': pyd_file.name,
+                'path': pyd_file,
+                'platform': platform_info,
+                'is_current_platform': self.is_compatible_platform(platform_info)
+            }
+            
+            status = "✓" if plugins_info[base_name]['is_current_platform'] else "⚠"
+            print(f"DEBUG: {status} {base_name} [{platform_info}]")
+        
+        self.app.messages(2, 9, f"Found {len(plugins_info)} compiled plugins")
+        return plugins_info
+    
+    def is_compatible_platform(self, platform_str: str) -> bool:
+        """Check if the plugin platform matches current environment"""
+        # Basic compatibility check
+        current_python = f"cp{sys.version_info.major}{sys.version_info.minor}"
+        
+        if platform_str == "unknown":
+            return True  # Assume compatible if we don't know
+        
+        # Check if it's for current Python version
+        if current_python in platform_str:
+            return True
+        
+        # Check if it's platform-agnostic
+        if platform_str in ["any", "none", ""]:
+            return True
+        
+        return False
+
+    def load_compiled_plugin(self, plugin_name: str) -> Optional[Any]:
+        """Load a compiled plugin - USES PLATFORM INFO"""
+        try:
+            # Get plugin info to find the exact filename
+            plugins_info = self.discover_compiled_plugins()
+            
+            if plugin_name not in plugins_info:
+                self.app.messages(2, 3, f"Plugin not found: {plugin_name}")
+                return None
+            
+            plugin_info = plugins_info[plugin_name]
+            plugin_path = plugin_info['path']
+            
+            print(f"DEBUG: Loading compiled plugin: {plugin_name} from {plugin_info['filename']}")
+            
+            # Warn about platform compatibility
+            if not plugin_info['is_current_platform']:
+                self.app.messages(2, 3, 
+                                 f"Plugin {plugin_name} may not be compatible. "
+                                 f"Plugin: {plugin_info['platform']}, "
+                                 f"Current: cp{sys.version_info.major}{sys.version_info.minor}")
+            
+            # Load dependencies
+            if not self.load_plugin_dependencies(plugin_name):
+                self.app.messages(2, 9, f"Note: No dependencies found for {plugin_name}")
+            
+            # Load the plugin module
+            spec = importlib.util.spec_from_file_location(plugin_name, plugin_path)
+            if spec is None:
+                self.app.messages(2, 3, f"Failed to create spec for {plugin_name}")
+                return None
+            
+            plugin_module = importlib.util.module_from_spec(spec)
+            sys.modules[plugin_name] = plugin_module
+            spec.loader.exec_module(plugin_module)
+            
+            # Find the plugin class
+            plugin_class = self.find_plugin_class(plugin_module, plugin_name)
+            if plugin_class:
+                self.app.messages(2, 9, f"Successfully loaded compiled plugin: {plugin_name}")
+                return plugin_class
+            else:
+                self.app.messages(2, 3, f"No valid plugin class found in {plugin_name}")
+                return None
+                
+        except Exception as e:
+            self.app.messages(2, 3, f"Error loading compiled plugin {plugin_name}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+        
+    def find_plugin_class(self, module, plugin_name: str) -> Optional[Any]:
+        """Find the plugin class in a module using duck typing"""
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            
+            # Check if it's a class with the required methods
+            if (isinstance(attr, type) and 
+                hasattr(attr, 'setup') and 
+                hasattr(attr, 'teardown') and
+                callable(attr.setup) and 
+                callable(attr.teardown) and
+                attr.__module__ == module.__name__):
+                
+                # Create test instance to verify it has required attributes
+                try:
+                    test_instance = attr(self.app)
+                    if (hasattr(test_instance, 'name') and 
+                        hasattr(test_instance, 'version') and 
+                        hasattr(test_instance, 'description')):
+                        return attr
+                except Exception as e:
+                    self.app.messages(2, 3, f"Error testing plugin class {attr_name}: {e}")
+                    continue
+        
+        return None
+    
+    def load_plugin_dependencies(self, plugin_name: str) -> bool:
+        """Load dependencies for a specific plugin"""
+        try:
+            print(f"DEBUG: Loading dependencies for: {plugin_name}")
+            
+            # Look for dependencies directory
+            deps_dir = self.plugin_base_path / "dependencies"
+            if not deps_dir.exists():
+                print(f"DEBUG: No dependencies directory found")
+                return True  # No dependencies needed
+            
+            print(f"DEBUG: Using dependencies directory: {deps_dir}")
+    
+            # Add dependencies directory to Python path
+            if str(deps_dir) not in sys.path:
+                sys.path.insert(0, str(deps_dir))
+                self.loaded_dependencies.add(str(deps_dir))
+                print(f"DEBUG: ✓ Added main dependency path: {deps_dir}")
+    
+            # Load extracted packages
+            extracted_dir = deps_dir / "extracted"
+            if extracted_dir.exists():
+                self.load_extracted_packages(extracted_dir)
+    
+            # Load direct packages
+            direct_packages_dir = deps_dir / "direct_packages"
+            if direct_packages_dir.exists():
+                self.load_direct_packages(direct_packages_dir)
+                
+                # Special handling for PyAutoGUI
+                if (direct_packages_dir / "pyautogui").exists():
+                    print("DEBUG: PyAutoGUI found in direct_packages, applying fix...")
+                    self.fix_pyautogui_import()
+    
+            return True
+            
+        except Exception as e:
+            print(f"DEBUG: Error loading dependencies: {e}")
+            return False
+
+    def extract_and_load_wheel(self, wheel_path: Path):
+        """Extract and load a wheel package"""
+        try:
+            # Create extraction directory
+            extract_dir = wheel_path.parent / "extracted" / wheel_path.stem
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Extract wheel
+            with zipfile.ZipFile(wheel_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            
+            # Find the actual package directory
+            package_dir = self.find_package_directory(extract_dir)
+            if package_dir and str(package_dir) not in sys.path:
+                sys.path.insert(0, str(package_dir))
+                self.loaded_dependencies.add(str(package_dir))
+                self.app.messages(2, 9, f"Loaded wheel package: {wheel_path.name}")
+            
+        except Exception as e:
+            self.app.messages(2, 3, f"Error extracting wheel {wheel_path}: {e}")
+    
+    def find_package_directory(self, extract_dir: Path) -> Optional[Path]:
+        """Find the actual package directory in extracted wheel contents"""
+        # Common wheel structures
+        possible_paths = [
+            extract_dir,
+            extract_dir / "src",
+            extract_dir / "lib",
+        ]
+        
+        # Look for directories containing Python files
+        for path in possible_paths:
+            if path.exists():
+                # Check for Python files or packages
+                python_files = list(path.rglob("*.py"))
+                python_packages = list(path.rglob("*/__init__.py"))
+                
+                if python_files or python_packages:
+                    return path
+        
+        # If no clear structure, return the main extract directory
+        return extract_dir
+    
+    def load_extracted_packages(self, extracted_dir: Path):
+        """Load packages from extracted dependencies"""
+        for package_dir in extracted_dir.iterdir():
+            if package_dir.is_dir():
+                if str(package_dir) not in sys.path:
+                    sys.path.insert(0, str(package_dir))
+                    self.loaded_dependencies.add(str(package_dir))
+                    self.app.messages(2, 9, f"Loaded extracted package: {package_dir.name}")
+    
+    def debug_pyautogui_structure(self):
+        """Quick debug of PyAutoGUI package structure"""
+        deps_dir = self.plugin_base_path / "dependencies" / "direct_packages" / "pyautogui"
+        
+        if not deps_dir.exists():
+            print(f"DEBUG: PyAutoGUI not found at: {deps_dir}")
+            return
+        
+        print(f"DEBUG: PyAutoGUI package structure at: {deps_dir}")
+        
+        # List all files in the package
+        for file_path in deps_dir.rglob("*"):
+            if file_path.is_file():
+                rel_path = file_path.relative_to(deps_dir)
+                print(f"DEBUG:   {rel_path}")
+        
+        # Check for critical files
+        critical_files = [
+            "__init__.py",
+            "__main__.py", 
+            "pyautogui.py",
+        ]
+        
+        for file_name in critical_files:
+            file_path = deps_dir / file_name
+            if file_path.exists():
+                print(f"DEBUG: ✓ Found critical file: {file_name}")
+            else:
+                print(f"DEBUG: ✗ Missing critical file: {file_name}")
+
+    def fix_pyautogui_import(self) -> bool:
+        """Fix PyAutoGUI import without importing it at module level"""
+        try:
+            print("DEBUG: === FIXING PYAUTOGUI PATH (LAZY) ===")
+            
+            # Path where PyAutoGUI should be
+            pyautogui_path = self.plugin_base_path / "dependencies" / "direct_packages" / "pyautogui"
+            
+            if not pyautogui_path.exists():
+                print(f"DEBUG: PyAutoGUI not found at: {pyautogui_path}")
+                return False
+            
+            print(f"DEBUG: Found PyAutoGUI at: {pyautogui_path}")
+            
+            # Add to sys.path if not already there
+            if str(pyautogui_path) not in sys.path:
+                sys.path.insert(0, str(pyautogui_path))
+                print(f"DEBUG: ✓ Added PyAutoGUI to sys.path: {pyautogui_path}")
+            
+            # DON'T test import here - that would bundle it!
+            print("DEBUG: ✓ PyAutoGUI path setup complete (lazy import)")
+            return True
+                
+        except Exception as e:
+            print(f"DEBUG: Error in fix_pyautogui_import: {e}")
+            return False
+
+    def fix_pillow_import(self) -> bool:
+        """Fix Pillow imports without importing at module level"""
+        try:
+            print("DEBUG: === FIXING PILLOW PATH (LAZY) ===")
+            
+            # Find the Pillow package
+            pillow_paths = [
+                self.plugin_base_path / "dependencies" / "extracted" / "pillow-12.0.0-cp313-cp313-win_amd64",
+                self.plugin_base_path / "dependencies" / "extracted" / "Pillow-12.0.0-cp313-cp313-win_amd64",
+            ]
+            
+            pillow_path = None
+            for path in pillow_paths:
+                if path.exists():
+                    pillow_path = path
+                    break
+            
+            if not pillow_path:
+                print("DEBUG: ✗ Pillow package not found")
+                return False
+            
+            print(f"DEBUG: Found Pillow at: {pillow_path}")
+            
+            # Add to sys.path if not already there
+            if str(pillow_path) not in sys.path:
+                sys.path.insert(0, str(pillow_path))
+                print(f"DEBUG: ✓ Added Pillow to sys.path: {pillow_path}")
+            
+            print("DEBUG: ✓ Pillow path setup complete (lazy import)")
+            return True
+                
+        except Exception as e:
+            print(f"DEBUG: Error in fix_pillow_import: {e}")
+            return False
+
+    def load_direct_packages(self, direct_packages_dir: Path):
+        """Load directly copied packages with better debugging"""
+        if not direct_packages_dir.exists():
+            return
+        
+        print(f"DEBUG: Loading direct packages from: {direct_packages_dir}")
+        
+        for package_dir in direct_packages_dir.iterdir():
+            if package_dir.is_dir():
+                package_name = package_dir.name
+                print(f"DEBUG: Processing direct package: {package_name} at {package_dir}")
+                
+                # Check if the package structure is correct
+                init_file = package_dir / "__init__.py"
+                if init_file.exists():
+                    print(f"DEBUG: ✓ Package {package_name} has __init__.py")
+                else:
+                    print(f"DEBUG: ⚠ Package {package_name} missing __init__.py")
+                    # Look for Python files anyway
+                    py_files = list(package_dir.glob("*.py"))
+                    if py_files:
+                        print(f"DEBUG:   But has {len(py_files)} Python files")
+                
+                if str(package_dir) not in sys.path:
+                    sys.path.insert(0, str(package_dir))
+                    self.loaded_dependencies.add(str(package_dir))
+                    print(f"DEBUG: ✓ Added to sys.path: {package_dir}")
+                else:
+                    print(f"DEBUG: ⚠ Already in sys.path: {package_dir}")
+        
+        # Debug: Show current sys.path to verify
+        print("DEBUG: Current sys.path for direct packages:")
+        for i, path in enumerate(sys.path[:5]):  # Show first 5 paths
+            print(f"DEBUG:   {i}: {path}")
+
+    # REMOVE THESE METHODS - they cause PyInstaller to bundle dependencies
+    def test_pyautogui_import(self):
+        """REMOVE THIS - it imports pyautogui and bundles it"""
+        # This method imports pyautogui, causing PyInstaller to include it
+        pass
+
+    def test_dependency_loading(self):
+        """REMOVE THIS - it imports dependencies"""
+        # This imports various dependencies
+        pass
+
+    def cleanup_dependencies(self):
+        """Clean up loaded dependencies (optional)"""
+        for dep_path in self.loaded_dependencies:
+            if dep_path in sys.path:
+                sys.path.remove(dep_path)
+        self.loaded_dependencies.clear()
+
 # Plugin Manager
 class PluginManager:
     def __init__(self, app):
         self.app = app
         self.plugins = {}
         self.loaded_plugins = {}
+        self.dependency_loader = PluginDependencyLoader(app)
+        
         # Get directory where your main script is located
         if getattr(sys, 'frozen', False):
             # If application is bundled (e.g., PyInstaller)
@@ -92,102 +495,132 @@ class PluginManager:
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
         
     def discover_plugins(self):
-        """Discover available plugins using duck typing - FIXED FOR COMPILED PLUGINS"""
+        """Discover available plugins - SIMPLIFIED VERSION"""
         self.plugins.clear()
-
+    
         print(f"DEBUG: Looking for plugins in: {self.plugins_dir.absolute()}")
-
+    
         if not self.plugins_dir.exists():
             print(f"DEBUG: Plugin directory doesn't exist: {self.plugins_dir}")
             return
-
-        # Add plugins directory to Python path so imports work
+    
+        # Add plugins directory to Python path
         plugins_path = str(self.plugins_dir.absolute())
         if plugins_path not in sys.path:
             sys.path.insert(0, plugins_path)
             print(f"DEBUG: Added to Python path: {plugins_path}")
-
-        # Look for BOTH .py AND .pyd files
-        python_files = list(self.plugins_dir.glob("*.py"))
-        compiled_files = list(self.plugins_dir.glob("*.pyd"))
-        plugin_files = python_files + compiled_files
     
-        print(f"DEBUG: Found {len(python_files)} Python files and {len(compiled_files)} compiled files")
-        print(f"DEBUG: All plugin files: {[f.name for f in plugin_files]}")
-
-        for file_path in plugin_files:
-            # Skip interface file and __init__ in both source and compiled forms
-            if (file_path.name.startswith("_") or 
-                file_path.stem == "etail_plugin"):  # This handles both .py and .pyd
-                continue
-
-            # Extract the base module name from compiled files
-            if file_path.suffix == '.pyd':
-                # For compiled files: sample_plugin.cp313-win_amd64.pyd -> sample_plugin
-                plugin_name = file_path.name.split('.')[0]  # Take first part before any dots
-                print(f"DEBUG: Compiled plugin detected, using base name: {plugin_name}")
+        # Discover source plugins (.py files)
+        python_files = list(self.plugins_dir.glob("*.py"))
+        source_plugins = [f for f in python_files 
+                         if not f.name.startswith("_") and f.stem != "etail_plugin"]
+        
+        # Discover compiled plugins (now returns dict with platform info)
+        compiled_plugins_info = self.dependency_loader.discover_compiled_plugins()
+        compiled_plugins = list(compiled_plugins_info.keys())
+        
+        print(f"DEBUG: Found {len(source_plugins)} source plugins")
+        print(f"DEBUG: Found {len(compiled_plugins)} compiled plugins")
+        
+        # Show platform compatibility for compiled plugins
+        for plugin_name, info in compiled_plugins_info.items():
+            status = "✓" if info['is_current_platform'] else "⚠"
+            print(f"DEBUG:   {status} {plugin_name} [{info['platform']}]")
+    
+        # Load source plugins (only if no compiled version exists)
+        for file_path in source_plugins:
+            plugin_name = file_path.stem
+            if plugin_name not in compiled_plugins:
+                self.load_source_plugin(plugin_name, file_path)
             else:
-                # For source files: sample_plugin.py -> sample_plugin
-                plugin_name = file_path.stem
-
-            print(f"DEBUG: Processing plugin: {plugin_name} from {file_path.name}")
-
-            try:
-                # Use import_module for proper import resolution
-                module = importlib.import_module(plugin_name)
-                print(f"DEBUG: Successfully imported module: {plugin_name}")
-
-                # Find plugin classes using duck typing
-                found_class = False
-                for name, obj in inspect.getmembers(module, inspect.isclass):
-                    # Check if this class looks like a plugin (has required methods)
-                    if (hasattr(obj, 'setup') and 
-                        hasattr(obj, 'teardown') and 
-                        callable(obj.setup) and 
-                        callable(obj.teardown) and
-                        obj.__module__ == module.__name__):
-
-                        # Create a test instance to verify it has plugin attributes
-                        try:
-                            test_instance = obj(self.app)
-                            if (hasattr(test_instance, 'name') and 
-                                hasattr(test_instance, 'version') and 
-                                hasattr(test_instance, 'description')):
-
-                                self.plugins[plugin_name] = {
-                                    'class': obj,
-                                    'module': module,
-                                    'file': file_path,
-                                    'enabled': False
-                                }
-                                found_class = True
-                                print(f"DEBUG: SUCCESS - Found valid plugin class: {name}")
-                                break
-                        except Exception as e:
-                            print(f"DEBUG: Failed to instantiate {name}: {e}")
-                            continue
-
-                if not found_class:
-                    print(f"DEBUG: No valid plugin class found in {plugin_name}")
-
-            except Exception as e:
-                print(f"DEBUG: ERROR loading {plugin_name}: {e}")
-                import traceback
-                traceback.print_exc()
-
+                print(f"DEBUG: Skipping source plugin {plugin_name} - compiled version available")
+    
+        # Load compiled plugins
+        for plugin_name in compiled_plugins:
+            self.load_compiled_plugin(plugin_name)
+    
         print(f"DEBUG: Total plugins loaded: {len(self.plugins)}")
 
+    def load_source_plugin(self, plugin_name: str, file_path: Path):
+        """Load a source plugin from .py file"""
+        try:
+            print(f"DEBUG: Processing source plugin: {plugin_name} from {file_path.name}")
+
+            # Use import_module for proper import resolution
+            module = importlib.import_module(plugin_name)
+            print(f"DEBUG: Successfully imported module: {plugin_name}")
+
+            # Find plugin classes using duck typing
+            found_class = False
+            for name, obj in inspect.getmembers(module, inspect.isclass):
+                # Check if this class looks like a plugin (has required methods)
+                if (hasattr(obj, 'setup') and 
+                    hasattr(obj, 'teardown') and 
+                    callable(obj.setup) and 
+                    callable(obj.teardown) and
+                    obj.__module__ == module.__name__):
+
+                    # Create a test instance to verify it has plugin attributes
+                    try:
+                        test_instance = obj(self.app)
+                        if (hasattr(test_instance, 'name') and 
+                            hasattr(test_instance, 'version') and 
+                            hasattr(test_instance, 'description')):
+
+                            self.plugins[plugin_name] = {
+                                'class': obj,
+                                'module': module,
+                                'file': file_path,
+                                'enabled': False,
+                                'type': 'source'
+                            }
+                            found_class = True
+                            print(f"DEBUG: SUCCESS - Found valid plugin class: {name}")
+                            break
+                    except Exception as e:
+                        print(f"DEBUG: Failed to instantiate {name}: {e}")
+                        continue
+
+            if not found_class:
+                print(f"DEBUG: No valid plugin class found in {plugin_name}")
+
+        except Exception as e:
+            print(f"DEBUG: ERROR loading {plugin_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def load_compiled_plugin(self, plugin_name: str):
+        """Load a compiled plugin using the dependency loader"""
+        print(f"DEBUG: TRY TO LOAD COMPILED")
+        try:
+            plugin_class = self.dependency_loader.load_compiled_plugin(plugin_name)
+            if plugin_class:
+                self.plugins[plugin_name] = {
+                    'class': plugin_class,
+                    'module': None,  # Compiled modules don't have source module
+                    'file': self.plugins_dir / f"{plugin_name}.pyd",
+                    'enabled': False,
+                    'type': 'compiled'
+                }
+                print(f"DEBUG: SUCCESS - Loaded compiled plugin: {plugin_name}")
+            else:
+                print(f"DEBUG: Failed to load compiled plugin: {plugin_name}")
+
+        except Exception as e:
+            print(f"DEBUG: ERROR loading compiled plugin {plugin_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
     def load_plugin(self, plugin_name):
-        """Load and enable a plugin - FIXED VERSION"""
+        """Load and enable a plugin - supports both source and compiled"""
         if plugin_name not in self.plugins:
             return False
 
         try:
-            # Get plugin info first
+            # Get plugin info
             plugin_info = self.plugins[plugin_name]
-            plugin_class = plugin_info['class']  # Define plugin_class BEFORE using it
+            plugin_class = plugin_info['class']
 
-            # Now safe to use plugin_class in debug print
             print(f"DEBUG: Loading plugin class {plugin_class} for plugin {plugin_name}")
 
             # Create instance and set up
@@ -223,7 +656,7 @@ class PluginManager:
         except Exception as e:
             self.app.messages(2, 3, f"Error unloading plugin {plugin_name}: {e}")
             return False
-    
+
     def call_plugin_method(self, method_name, *args, **kwargs):
         """Call a method on all loaded plugins"""
         results = []
@@ -236,6 +669,27 @@ class PluginManager:
             except Exception as e:
                 print(f"Error calling {method_name} on {plugin_name}: {e}")
         return results
+
+    def get_plugin_info(self, plugin_name: str) -> Dict[str, Any]:
+        """Get information about a plugin"""
+        if plugin_name in self.plugins:
+            plugin_info = self.plugins[plugin_name]
+            if plugin_info['enabled'] and plugin_name in self.loaded_plugins:
+                instance = self.loaded_plugins[plugin_name]
+                return {
+                    'name': getattr(instance, 'name', 'Unknown'),
+                    'version': getattr(instance, 'version', 'Unknown'),
+                    'description': getattr(instance, 'description', 'No description'),
+                    'type': plugin_info['type'],
+                    'enabled': True
+                }
+            else:
+                return {
+                    'name': plugin_name,
+                    'type': plugin_info['type'],
+                    'enabled': False
+                }
+        return {}
 
 # ****************************************************************************
 # *************************** Collapsible frame******************************
@@ -655,14 +1109,119 @@ class LogTailApp:
         # Initialize plugin manager AFTER everything else is set up
         self.plugin_manager = None
         self.root.after(100, self.initialize_plugin_system)  # Delay plugin init
+        self.plugin_filters = {}  # plugin_name -> list of filters
+        self.plugin_filter_callbacks = {}  # plugin_name -> callback function
+
+    def broadcast_regex_match(self, field_data, original_line, filter_pattern):
+        """Broadcast regex match data to all loaded plugins"""
+        match_data = {
+            'fields': field_data,  # Array of extracted fields
+            'line': original_line,  # Complete log line
+            'pattern': filter_pattern,  # Regex pattern used
+            'timestamp': time.time()  # When the match occurred
+        }
+        print(f"DEBUG: broadcast  {field_data} - {filter_pattern}")
+    
+    # Send to all loaded plugins
+        if hasattr(self, 'plugin_manager'):
+            self.plugin_manager.call_plugin_method('on_regex_data', match_data)
+            print(f"DEBUG: SEND  {match_data}")
+            # Plugin filter system
+
+    def test_dependency_loading(self):
+        """Test if dependency loading is working"""
+        try:
+            # Try to import common dependencies to verify they're available
+            test_imports = ['PIL', 'psutil', 'pyautogui', 'pytesseract']
+            
+            for import_name in test_imports:
+                try:
+                    __import__(import_name)
+                    self.messages(2, 9, f"Dependency available: {import_name}")
+                except ImportError:
+                    self.messages(2, 3, f"Dependency missing: {import_name}")
+                    
+        except Exception as e:
+            self.messages(2, 3, f"Dependency test failed: {e}")
+    
+    def load_specific_compiled_plugin(self, plugin_name: str) -> bool:
+        """Load a specific compiled plugin by name"""
+        try:
+            if not hasattr(self, 'plugin_manager'):
+                self.messages(2, 3, "Plugin manager not initialized")
+                return False
+            
+            return self.plugin_manager.load_plugin(plugin_name)
+            
+        except Exception as e:
+            self.messages(2, 3, f"Error loading compiled plugin {plugin_name}: {e}")
+            return False
 
     def initialize_plugin_system(self):
-        """Initialize plugin system after main UI is loaded"""
+        """Initialize plugin system WITHOUT importing dependencies"""
         try:
             self.plugin_manager = PluginManager(self)
-            self.messages(2, 9, "Plugin system initialized")
+        
+            # Only setup paths, don't test imports
+            if hasattr(self.plugin_manager, 'dependency_loader'):
+                loader = self.plugin_manager.dependency_loader
+                # Just setup paths, don't test imports
+                loader.fix_pyautogui_import()    # Sets up path only
+                loader.fix_pillow_import()       # Sets up path only
+        
+            self.messages(2, 9, "Plugin system initialized (lazy loading)")
         except Exception as e:
             self.messages(2, 3, f"Plugin system failed: {e}")
+
+    def register_plugin_filter(self, plugin_name, filter_pattern, filter_id, callback):
+        """Register a plugin-specific filter"""
+        if plugin_name not in self.plugin_filters:
+            self.plugin_filters[plugin_name] = []
+            self.plugin_filter_callbacks[plugin_name] = callback
+            
+        plugin_filter = {
+            'id': filter_id,
+            'pattern': filter_pattern,
+            'plugin': plugin_name,
+            'regex': re.compile(filter_pattern) if filter_pattern else None
+        }
+        self.plugin_filters[plugin_name].append(plugin_filter)
+        self.messages(2, 9, f"Plugin filter registered(main): {plugin_name} - {filter_id} {plugin_filter}")
+        # ADD THIS LINE: Return True to indicate success
+        return True  # ← ADD THIS LINE
+        
+    def process_plugin_filters(self, line):
+        """Process all plugin filters against a line"""
+        for plugin_name, filters in self.plugin_filters.items():
+            for filter_obj in filters:
+                if filter_obj['regex']:
+                    matches = filter_obj['regex'].findall(line)
+                    if matches:
+                        # Send matches to the plugin
+                        callback = self.plugin_filter_callbacks.get(plugin_name)
+                        if callback:
+                            callback(filter_obj['id'], matches, line)
+    
+    def remove_plugin_filter(self, plugin_name, filter_id):
+        """Remove a specific plugin filter"""
+        if plugin_name in self.plugin_filters:
+            self.plugin_filters[plugin_name] = [
+                f for f in self.plugin_filters[plugin_name] 
+                if f['id'] != filter_id
+            ]
+            
+            # Remove plugin entry if no filters left
+            if not self.plugin_filters[plugin_name]:
+                del self.plugin_filters[plugin_name]
+                del self.plugin_filter_callbacks[plugin_name]
+        return True  # ← ADD THIS LINE                
+
+    def test_plugin_integration(self):
+        """Test if plugins are receiving data"""
+        test_line = "2025-10-04 12:04:53 [System] [] You received Test Item x (1) Value: 0.0100 PED"
+        print("DEBUG: Testing plugin integration...")
+        self.process_plugin_filters(test_line)
+        print("Test completed")
 
     def resource_path(self, relative_path):
         """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -2432,7 +2991,7 @@ class LogTailApp:
         self.log_text.tag_configure(new_filter_key, foreground=fg, background=bg)
     
         # Save to file
-        self.save_filters()
+        self.save_filters(None)
     
         # Reset editing state
         self.cancel_edit()
@@ -3824,6 +4383,7 @@ class LogTailApp:
         end_index = self.log_text.index("end-1c")
     
         # Apply simple filters
+        self.process_plugin_filters(line)
         for filter_str, filter_data in self.filters.items():
             if self.line_matches_filter(line, filter_data):
                 # Apply coloring
@@ -3854,7 +4414,9 @@ class LogTailApp:
         if not regex_pattern:
             return False
         try:
-            return bool(re.search(regex_pattern, line))
+            if hasattr(self, 'plugin_manager'):
+                self.broadcast_regex_match(re.findall(regex_pattern, line), line, regex_pattern)
+            return bool(re.findall(regex_pattern, line))
         except re.error as e:
             self.messages(2, 3, f"Advanced filter regex error: {e}")
             return False

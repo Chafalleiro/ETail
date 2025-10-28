@@ -21,5 +21,6 @@ def build_main_app():
         '--clean'
     ])
 
+
 if __name__ == "__main__":
     build_main_app()
