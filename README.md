@@ -29,6 +29,10 @@ INSTALLING:
 
  Installing binaries: Just do the same thing, put etail.exe in any directory you see fit.
  
+# QUICK SETUP:
+
+
+
 # CONFIGURATION AND RUNNING:
 
 The program is divided into tabs, each one has a function.
@@ -118,15 +122,85 @@ This tab has the colapsible sections. Regex builder, Actions and Saved Advanced 
 
 ### Regex Builder
 
-Add up to ten positional vale fields. You can treat the values entered as strings, words, plain regexes or insert a predefined expresion made of some of the most common patterns found in a log file. Positional means thatevery field must be satisfied in its place to count as valid. Son if we fill first a field with a date matching pattern, and then a string, if the string is found before the date it won't count as a valid match. Useful to match lines with variable values between patterns.
+Add up to ten positional vale fields. You can treat the values entered as strings, words, plain regexes or insert a predefined expresion made of some of the most common patterns found in a log file. Positional means thatevery field must be satisfied in its place to count as valid. So if we fill first a field with a date matching pattern, and then a string, if the string is found before the date it won't count as a valid match. Useful to match lines with variable values between patterns.
 
 **Common patterns** - In this dropdown you can select whithin a variety of patterns that are common in logs, dates, time, IP addresses, e-mail, MAC adresses, etc.
 
 **Insert pattern** - Insert the selected pattern in the active field that is editing.
 
-**Preview** - See the pattern regex and its uses.
+**Preview** - See the selected pattern regex and its uses.
+
+**Filter Name** Name this filter for better organization.
+
+**Enable**	Use this checkbox to enable the filter after storing it.
+
+**Field x** There are up to ten fields to use. This way you can create a complex regex with grouping, sorted matcheng, etc. Here you can add a part of th e pattern you want.
+
+ **Combobox 1** Decide how to treat the field. As a string it will be a common string. As word will be surrounded by \b modifiers. As reges will be inserted as is. Predefined will let you choose between several predefined common patterns.
+
+**Remove** **Insert** Helpers for predefined patterns. Remove them or insert a predefined pattern.
+
+**Add field*** Add up to ten fields to the expression. There is a combobox on how to separate them. Lazy anything in between (.*), inmediate after just insert the field. Word boundary add \b, whitespace \s+ or a user defined separator.
 
 
+**Generated regex** Here the generated regex will be shown.
+
+**Test Regex Pattern** Will open adialog where you can test the expression with a given text. You can add or paste any text you want to match against your expression.
+
+**Copy to clippboard** Copy your regular expression and test it or save it for later. Sometimes is easier to make here a regex, test it and edit the tricky parts and then paste it as a simple filter. This is a very noce site to test yout patterns. https://regex101.com/
+
+### Actions
+
+This is just as the actions of the simple filters tab.
+
+### Saved Advanced filters
+
+In this section you can view, prepare for editing, activate or deactivate your saved advanced filters.
+
+**Load selected** Load the filter into the builder section for editing.
+
+**Delete selected** Delete the selected filter.
+
+**Toogle enabled** Enable/disable the filter.
+
+### General Tab Buttons
+
+**Store advanced filter** Store a filter that is being edited.
+
+**Clear form** Clear the filter editing fields and unload a loaded one.
+
+**Test** Test the pattern.
+
+**Expand all** Expand and view all the sections.
+
+**Collapse all** Collapse and hide all the sections in tab.
+
+
+## Plugins Tab
+
+The plugins must be put into the plugins directory of the application home dir. There is a sample plugin included in the release files and the code. Documentation of integration is on the way. Note that while the main app could load whl files, is still a testing feature, the safest option is to import the modules needed into the main application if you want to compile it.
+
+The app can use uncompiled and source plugins, the compiled ones take precedence in case there are two of the same version.
+
+For safety plugins are by default unloaded at the star of the application.
+
+The application comes with three plugins. A sample plugin, an OCR monitoring plugin and a data analysis plugin. Their documentations is provided in their own repositories and readmes.
+
+**Discover plugins** Rescan the plugins directory.
+
+**Reload all** Try to reload the plugins found.
+
+**Open plugins folder** Open the older where plugins are stored.
+
+**Available plugins** A list of the plugins discovereed and ready to use. Also presents information about the plugin and it's state.
+
+**Enable plugin** Enable the selected plugin. It will start running its code after enebled.
+
+**Disable plugin** Uload and stops plugin execution.
+
+**Settings** Open the plugin settings and GUI.
+
+**Plugin information** Shows the information provided abut the plugin.
 
 
 TODO:
@@ -135,8 +209,12 @@ TODO:
 * Documentation for plugin making, regular expression creation and general use.
 * Help system and popup tags.
 * Cleanup and adjust the GUI.
+* Refactor the code.
+* Get rid of Pyautogui to downsize the exe.
+* Remake some parts of the regex creator. It needs to be more intuitive and complete.
+* Activation routines for simple filters.
 
-Totally rewritten form HTA to Python. 
+Totally rewritten from HTA to Python. 
 Authors Deepseek AI and Alfonso Abelenda Escudero.
 
 Old 0.11 version installer and sources can be downloaded from here ATM

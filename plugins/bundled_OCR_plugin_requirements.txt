@@ -1,0 +1,20 @@
+# Auto-generated requirements file
+# Source: bundled_OCR_plugin.py
+# Generated: 2025-10-28 16:22:09
+# Standard library and local modules are automatically excluded
+
+Pillow==11.3.0
+fuzzywuzzy==0.18.0
+mss==10.1.0
+numpy==2.2.6
+psutil==7.1.0
+pyautogui==0.9.54
+pytesseract==0.3.13
+pywin32==311
+
+# Import mappings:
+# PIL -> Pillow
+# numpy -> numpy
+# psutil -> psutil
+# pyautogui -> pyautogui
+# win32ui -> pywin32
