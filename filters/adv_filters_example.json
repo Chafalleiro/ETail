@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "advanced_filters": {
+    "advanced_uno dos": {
+      "name": "uno dos",
+      "enabled": false,
+      "fields": [
+        {
+          "text": "uno,dos",
+          "modifier": "as_string",
+          "predefined_type": ""
+        }
+      ],
+      "generated_regex": "(uno|dos).*",
+      "actions": {
+        "bg_color": "yellow",
+        "fg_color": "black",
+        "action": "tts",
+        "action_modifier": "uno",
+        "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_ES-ES_HELENA_11.0",
+        "voice_name": "Microsoft Helena Desktop - Spanish (Spain)"
+      }
+    },
+    "advanced_tres": {
+      "name": "tres",
+      "enabled": false,
+      "fields": [
+        {
+          "text": "tres,cuatro",
+          "modifier": "as_word",
+          "predefined_type": ""
+        }
+      ],
+      "generated_regex": "\\b(tres|cuatro)\\b.*",
+      "actions": {
+        "bg_color": "yellow",
+        "fg_color": "black",
+        "action": "tts",
+        "action_modifier": "tres",
+        "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0",
+        "voice_name": "Microsoft David Desktop - English (United States)"
+      }
+    }
+  }
+}

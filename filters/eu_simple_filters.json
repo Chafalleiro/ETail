@@ -1,0 +1,58 @@
+{
+  "version": "1.1",
+  "filters": [
+    {
+      "pattern": "\\b(19\\d\\d|20\\d\\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\\d|3[01])\\b.*(Globals)\\b.*",
+      "is_regex": true,
+      "fg_color": "black",
+      "bg_color": "yellow",
+      "action": "skip",
+      "action_modifier": ""
+    },
+    {
+      "pattern": "\\b(19\\d\\d|20\\d\\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\\d|3[01])\\b.*\\b(System)\\b.*(Mission updated)",
+      "is_regex": true,
+      "fg_color": "black",
+      "bg_color": "yellow",
+      "action": "tts",
+      "action_modifier": "Mission updated",
+      "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+    },
+    {
+      "pattern": "\\b(19\\d\\d|20\\d\\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\\d|3[01])\\b.*(System)\\b.*(You have gained).*(Anatomy).*",
+      "is_regex": true,
+      "fg_color": "#004080",
+      "bg_color": "#80ffff",
+      "action": "tts",
+      "action_modifier": "Anatomy",
+      "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+    },
+    {
+      "pattern": "[System] [] You are not wounded",
+      "is_regex": false,
+      "fg_color": "#00ff00",
+      "bg_color": "#400000",
+      "action": "tts",
+      "action_modifier": "Healed",
+      "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+    },
+    {
+      "pattern": "\\b(19\\d\\d|20\\d\\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\\d|3[01])\\b.*\\b(\\d{2}:\\d{2}:\\d{2})\\b.*\\b(local|System)\\b.*\\b(You received)\\b.*\\b(Shrapnel)\\b.*\\b(Value)\\b.*",
+      "is_regex": true,
+      "fg_color": "black",
+      "bg_color": "yellow",
+      "action": "tts",
+      "action_modifier": "Shrapnel",
+      "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+    },
+    {
+      "pattern": "\\b(19\\d\\d|20\\d\\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\\d|3[01])\\b.*(System)\\b.*(You have gained).*(Perception).*",
+      "is_regex": true,
+      "fg_color": "#004080",
+      "bg_color": "#80ffff",
+      "action": "tts",
+      "action_modifier": "Perception",
+      "voice_id": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_EN-US_DAVID_11.0"
+    }
+  ]
+}

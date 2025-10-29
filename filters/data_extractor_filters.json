@@ -1,0 +1,374 @@
+{
+  "wizard_20251025_223528": {
+    "regex": "(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(You\\ received)(.+?)(x).*?(\\d+).*?(\\d+\\.\\d+)",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "Item name": {
+        "original_name": "Item name",
+        "data_type": "text",
+        "index": 4
+      },
+      "Amount": {
+        "original_name": "Amount",
+        "data_type": "integer",
+        "index": 6
+      },
+      "Value": {
+        "original_name": "Value",
+        "data_type": "float",
+        "index": 7
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "Item name",
+      "Amount",
+      "Value"
+    ],
+    "sample_line": "2025-10-04 12:04:53 [System] [] You received Robot Component Residue x (2) Value: 0.0200 PED",
+    "created_at": "2025-10-25 22:35:28",
+    "last_used": "2025-10-27 21:27:25",
+    "match_count": 0,
+    "name": "Loot",
+    "description": "Looted items",
+    "profit_loss": {
+      "enabled": true,
+      "concepts": [
+        {
+          "enabled": true,
+          "name": "Looted value",
+          "value_type": "field",
+          "fixed_value": 0.0,
+          "value_field": "Value",
+          "multiplier": 1.0,
+          "is_profit": true,
+          "description": ""
+        },
+        {
+          "enabled": false
+        },
+        {
+          "enabled": false
+        }
+      ]
+    }
+  },
+  "wizard_20251025_223746": {
+    "regex": "(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(You\\ have\\ gained).*?(\\d+\\.\\d+).*?(experience\\ in\\ your).(.+?).(skill)",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "amount": {
+        "original_name": "amount",
+        "data_type": "float",
+        "index": 4
+      },
+      "Skill": {
+        "original_name": "Skill",
+        "data_type": "text",
+        "index": 6
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "amount",
+      "Skill"
+    ],
+    "sample_line": "",
+    "created_at": "2025-10-25 22:37:46",
+    "last_used": "2025-10-27 21:27:25",
+    "match_count": 0,
+    "name": "Skills",
+    "description": "Skills gained"
+  },
+  "wizard_20251025_223924": {
+    "regex": "(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(You\\ have\\ gained).*?(\\d+\\.\\d+).*\\b(Perception|Agility|Dexterity)\\b.*",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "amount": {
+        "original_name": "amount",
+        "data_type": "float",
+        "index": 4
+      },
+      "Abilitiy": {
+        "original_name": "Abilitiy",
+        "data_type": "text",
+        "index": 5
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "amount",
+      "Abilitiy"
+    ],
+    "sample_line": "",
+    "created_at": "2025-10-25 22:39:24",
+    "last_used": "2025-10-27 21:23:12",
+    "match_count": 0,
+    "name": "Abilities",
+    "description": ""
+  },
+  "wizard_20251025_224849": {
+    "regex": "\\b(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(You\\ inflicted).(\\d+\\.\\d+).*?(points\\ of\\ damage).*?",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "amount": {
+        "original_name": "amount",
+        "data_type": "float",
+        "index": 4
+      },
+      "field_6": {
+        "original_name": "field_6",
+        "data_type": "text",
+        "index": 5
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "amount",
+      "field_6"
+    ],
+    "sample_line": "",
+    "created_at": "2025-10-25 22:48:49",
+    "last_used": "2025-10-27 21:27:25",
+    "match_count": 0,
+    "name": "Damage",
+    "description": "Damage done by any weapon",
+    "profit_loss": {
+      "enabled": true,
+      "concepts": [
+        {
+          "enabled": true,
+          "name": "Decay",
+          "value_type": "fixed",
+          "fixed_value": 1e-05,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": false,
+          "description": ""
+        },
+        {
+          "enabled": true,
+          "name": "Ammo burn",
+          "value_type": "fixed",
+          "fixed_value": 0.008,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": false,
+          "description": ""
+        },
+        {
+          "enabled": false
+        }
+      ]
+    }
+  },
+  "wizard_20251026_191325": {
+    "regex": "(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(The\\ target\\ Dodged\\ your\\ attack)",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "Dodged": {
+        "original_name": "Dodged",
+        "data_type": "text",
+        "index": 3
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "Dodged"
+    ],
+    "sample_line": "2025-10-26 17:58:06 [System] [] The target Dodged your attack",
+    "created_at": "2025-10-26 19:13:25",
+    "last_used": "2025-10-27 21:27:23",
+    "match_count": 0,
+    "profit_loss": {
+      "enabled": true,
+      "concepts": [
+        {
+          "enabled": true,
+          "name": "Decay",
+          "value_type": "fixed",
+          "fixed_value": 1e-05,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": false,
+          "description": ""
+        },
+        {
+          "enabled": true,
+          "name": "Ammo",
+          "value_type": "fixed",
+          "fixed_value": 0.008,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": false,
+          "description": ""
+        },
+        {
+          "enabled": false
+        }
+      ]
+    },
+    "name": "Dodged",
+    "description": "We targed dodges an attack. We lose decay and ammo"
+  },
+  "wizard_20251026_192203": {
+    "regex": "\\b(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(You\\ healed\\ yourself).(\\d+\\.\\d+).*?(points).*?",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "Text": {
+        "original_name": "Text",
+        "data_type": "text",
+        "index": 3
+      },
+      "amount": {
+        "original_name": "amount",
+        "data_type": "float",
+        "index": 4
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "Text",
+      "amount"
+    ],
+    "sample_line": "",
+    "created_at": "2025-10-26 19:22:03",
+    "last_used": "2025-10-27 21:26:53",
+    "match_count": 0,
+    "profit_loss": {
+      "enabled": true,
+      "concepts": [
+        {
+          "enabled": true,
+          "name": "Decay",
+          "value_type": "fixed",
+          "fixed_value": 0.0001,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": false,
+          "description": ""
+        },
+        {
+          "enabled": false
+        },
+        {
+          "enabled": false
+        }
+      ]
+    },
+    "name": "FAP",
+    "description": ""
+  },
+  "wizard_20251027_012430": {
+    "regex": "(\\d{4}-\\d{2}-\\d{2}).*?(\\d{2}:\\d{2}:\\d{2}).*?(\\[System\\]).*?(The\\ target\\ Evaded\\ your\\ attack)",
+    "field_definitions": {
+      "date": {
+        "original_name": "date",
+        "data_type": "date",
+        "index": 0
+      },
+      "time": {
+        "original_name": "time",
+        "data_type": "time",
+        "index": 1
+      },
+      "Evades": {
+        "original_name": "Evades",
+        "data_type": "text",
+        "index": 3
+      }
+    },
+    "field_names": [
+      "date",
+      "time",
+      "Evades"
+    ],
+    "sample_line": "2025-10-26 23:41:11 [System] [] The target Evaded your attack",
+    "created_at": "2025-10-27 01:24:30",
+    "last_used": "2025-10-27 04:35:02",
+    "match_count": 0,
+    "profit_loss": {
+      "enabled": true,
+      "concepts": [
+        {
+          "enabled": true,
+          "name": "decay",
+          "value_type": "fixed",
+          "fixed_value": 0.0001,
+          "value_field": null,
+          "multiplier": 1.0,
+          "is_profit": true,
+          "description": ""
+        },
+        {
+          "enabled": false
+        },
+        {
+          "enabled": false
+        }
+      ]
+    },
+    "name": "Evade",
+    "description": ""
+  }
+}

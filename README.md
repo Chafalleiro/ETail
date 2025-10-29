@@ -31,6 +31,16 @@ INSTALLING:
  
 # QUICK SETUP:
 
+This program was initially intended to be used as an Entropia User chat.log monitor. In the filters zip or the folder named filter that comes with the app you'll find filter configurations that show the app features.
+
+In the Configuration tab  load those filters, alternatively you can load the configuration "eu_config.json" or "default_filters.json".
+
+
+For the **OCR Plugin** you can copy the "ocr_plugin_config.json" from filters directory into your (main drive):\Users\(your user)\.etail and it will start an Entropia Universe watch.
+
+For the **Data Extractor** plugin you can import it in the filters tab and loading the "data_extractor_filters.json" file in the filters directory.
+
+The release installer comes with those filters in the filters folder to use them.
 
 
 # CONFIGURATION AND RUNNING:

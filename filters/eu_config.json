@@ -1,0 +1,19 @@
+{
+  "log_file": "C:\\Users\\amdgr\\Documents\\Entropia Universe\\chat.log",
+  "initial_lines": 55,
+  "refresh_interval": 100,
+  "auto_load_config": true,
+  "last_directory": "C:\\vhost\\Repositorios\\ETail",
+  "filters_file": "C:\\Users\\amdgr\\Documents\\Entropia Universe\\test_filters.json",
+  "advanced_filters_file": "C:\\Users\\amdgr\\Documents\\Entropia Universe\\adv_filters.json",
+  "recent_filters": [
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\test_filters.json",
+    "C:/Users/amdgr/Documents/Entropia Universe/test_filters.json",
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\default_filters.json",
+    "C:\\Users\\amdgr\\.mysterium-node\\default_filters.json"
+  ],
+  "recent_advanced_filters": [
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\adv_filters.json",
+    "C:/Users/amdgr/Documents/Entropia Universe/adv_filters.json"
+  ]
+}
