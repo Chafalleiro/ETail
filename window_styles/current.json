@@ -1,0 +1,43 @@
+{
+  "TitleBar": {
+    "background": "#004000",
+    "foreground": "#ffffff",
+    "font_family": "Arial",
+    "font_size": "9",
+    "height": "25",
+    "active_background": "#2c3e50",
+    "inactive_background": "#95a5a6",
+    "gradient_start": "#2c3e50",
+    "gradient_end": "#34495e"
+  },
+  "WindowButtons": {
+    "close_color": "#e74c3c",
+    "close_hover": "#c0392b",
+    "maximize_color": "#f39c12",
+    "maximize_hover": "#e67e22",
+    "minimize_color": "#3498db",
+    "minimize_hover": "#2980b9",
+    "button_size": "12",
+    "button_spacing": "2",
+    "symbol_color": "#ffffff",
+    "symbol_size": "8"
+  },
+  "WindowBorder": {
+    "border_color": "#34495e",
+    "border_width": "1",
+    "active_border": "#3498db",
+    "inactive_border": "#bdc3c7",
+    "border_radius": "0",
+    "resize_handle_color": "#3498db",
+    "resize_handle_size": "4"
+  },
+  "WindowBackground": {
+    "background": "#004000",
+    "gradient_start": "#ecf0f1",
+    "gradient_end": "#bdc3c7",
+    "pattern": "gradient",
+    "opacity": "1.0",
+    "shadow_color": "#000000",
+    "shadow_blur": "10"
+  }
+}

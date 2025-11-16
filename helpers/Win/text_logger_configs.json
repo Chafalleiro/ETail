@@ -1,0 +1,21 @@
+[
+  {
+    "name": "EU",
+    "type": "text_logger",
+    "host": "127.0.0.1",
+    "port": 21328,
+    "password": "patata",
+    "service_name": "",
+    "exe_name": "",
+    "log_type": "Application",
+    "monitor_processes": "",
+    "process_threshold": 5,
+    "poll_interval": 5,
+    "use_ssl": true,
+    "run_as_admin": false,
+    "use_exe": false,
+    "log_files": "C:/Users/amdgr/Documents/Entropia Universe/chat.log",
+    "tail_lines": 50,
+    "encoding": "utf-8"
+  }
+]

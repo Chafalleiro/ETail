@@ -1,0 +1,23 @@
+[
+  {
+    "name": "hw local",
+    "type": "hardware_monitor",
+    "host": "127.0.0.1",
+    "port": 21328,
+    "password": "patata",
+    "service_name": "",
+    "exe_name": "",
+    "log_type": "Application",
+    "monitor_processes": "",
+    "process_threshold": 5,
+    "poll_interval": 5,
+    "use_ssl": true,
+    "run_as_admin": true,
+    "use_exe": false,
+    "log_files": "",
+    "tail_lines": 50,
+    "encoding": "utf-8",
+    "use_fahrenheit": false,
+    "refresh_interval": 5
+  }
+]

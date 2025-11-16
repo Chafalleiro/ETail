@@ -1,0 +1,21 @@
+{
+  "Treeview": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "fieldbackground": "#004000",
+    "font_family": "Arial",
+    "font_size": "9",
+    "rowheight": "25",
+    "borderwidth": "1",
+    "relief": "solid",
+    "padding_x": "5",
+    "padding_y": "2"
+  },
+  "Treeview.Item": {
+    "even_color": "#008000",
+    "odd_color": "#004040",
+    "hover_color": "#e3f2fd",
+    "selected_color": "#008040",
+    "selected_text": "#ffffff"
+  }
+}

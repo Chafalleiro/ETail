@@ -1,0 +1,75 @@
+# **ETAIL WIN HELPERS**
+
+_________________________________________________________________
+
+Set of utils to send data to the server of ETail.
+
+SSL is default for all.
+
+### **ETSH**
+
+Organizer for the helpers.
+
+You can add, edit, delete and control the execution of the helpers.
+
+Also has a launcher for system event viewer, services and task manager.
+
+By default is sent to tray wwhen closed. There you can close it or restore.
+
+Common parameters for all tthe apps.
+
+* Name: To identify the monitor.
+* Host: ip or name where the info will be seent. default localhost
+* Port: the server port to send. default 21327
+* Password: password to comunicate
+* Run as admin. Some info must be acceses as admin account like service info, system security logs or CPU temperature.
+* Poll interval: default 5 s.
+* Use executable. Here you select to laych the executable or the sorce of the app.
+
+
+#### **Service monitors**
+
+Launchs process_mon, which can be used to monitor services and progrms.
+
+You can check an executable launched by a service to control the subprocess spawnings and acto in time.
+
+* Service name: Name of the service you want to watch. You can find it using the services manager linked in the system tool tab.
+* Executable name: Name of the service executable, listed on service manager.
+* Processes to monitor: List of comma separated progemas that the service will launch as subprocesses.
+* Process thereshold: Number of instances of that programs that when reached will alert the server.
+ 
+ 
+#### **Event Loggers**
+Launchs event_logger
+
+This command will list the avilable event logs in your system:
+
+ ```
+  wevtutil el
+ ```
+ 
+
+* Common logs: List of common logs that you can select
+* Event log name list: Available logs list
+* Or enter manyually: Enter the name of the log you want to check. Use the command above for a complete list.
+
+#### **Text Log Monitors**
+
+Launchs windows_log_client wich tails logs in text format available in your system.
+
+* Log files: Comma separated files to monitor.
+* Initial lines: How many lines will transmitted at the start of the session.
+* Poll interval: Frecuency of the refresh.
+* File encoding: Select a file encoding to read the text more acurately.
+
+
+#### **Hardware monitors**
+
+Launchs Hardware_mon. It sends a line with CPU cores, temp and load, GPU temp and load, memory load and disks free space. YOu'll need to run as admint to check the CPU temperatures.
+
+Uses the LibreHardweareMonitorLib dell as source of information, can fallback to windows WMI if fails. License is in the folder.
+
+* Temperature Unit: Check to change to Farenheit, default is Celsius.
+* Refresh interval: Default 5 s.
+
+Each tab shows an uotput of the app to check it's state and information about the run.

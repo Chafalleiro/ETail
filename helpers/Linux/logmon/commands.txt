@@ -1,0 +1,30 @@
+
+Manual run with sudo:
+bash
+# Build first
+python build_exe.py
+
+# Run with sudo
+sudo dist/LinuxLogMonitor --host 192.168.1.100 --password "patata" \
+    --log-files /var/log/syslog /var/log/auth.log /var/log/kern.log
+Using configuration file:
+bash
+# Create config file
+sudo cp /etc/linux-log-monitor.conf.example /etc/linux-log-monitor.conf
+sudo nano /etc/linux-log-monitor.conf
+
+# Run with config
+sudo dist/LinuxLogMonitor --config /etc/linux-log-monitor.conf
+
+As a systemd service:
+# Install and enable service
+sudo ./install_linux_client.sh
+
+# Start the service
+sudo systemctl start linux-log-monitor
+
+# Check status
+sudo systemctl status linux-log-monitor
+
+# View logs
+sudo journalctl -u linux-log-monitor -f

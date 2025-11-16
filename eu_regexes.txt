@@ -1,0 +1,54 @@
+Will match any srhapnel amount
+\b(\d{4}-\d{2}-\d{2})\b.*\b(\d{2}:\d{2}:\d{2})\b.*\b(local|System)\b.*\b(You received)\b.*\b(Shrapnel)\b.*(\d)\b.*(\d\.\d+)
+
+Will match any amount and value of items received
+(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ received).(.+?).(x).*?(\d+).*?(\d+\.\d+)
+
+
+Will match Perception, Anatomy or Dexterity and any amount of the skill
+(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ have\ gained).*?(\d+\.\d+).*\b(Perception|Agility|Dexterity|Corage|Bravado)\b.*
+
+Will match just one word after "gained"  and any amount of the skill
+\b(19\d\d|20\d\d)[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\d|3[01])\b.*(System)\b.*(You have gained).*?(\d+\.\d+).*?(\w+)
+(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ have\ gained).*?(\d+\.\d+).*?(\w+)
+
+Will match anything after "gained"  and any amount of the skill
+(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ have\ gained).*?(\d+\.\d+).?(.*).?
+
+
+Will match anything between "gained" and "skill"  and any amount of the skill
+(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ have\ gained).*?(\d+\.\d+).*?(experience\ in\ your).(.+?).(skill)
+
+Will match damage and return the amount and "points of damage" text
+\b(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ inflicted).(\d+\.\d+).*?(points\ of\ damage).*?
+
+
+Will match "You Healed yourself" and return the amount and "points" text
+\b(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2}).*?(\[System\]).*?(You\ healed\ yourself).(\d+\.\d+).*?(points).*?
+
+REgexex
+
+2025-10-24 16:03:52 [System] [] You have gained 0.8524 experience in your First Aid skill
+2025-10-04 12:04:51 [Globals] [] crowreaper crowreaper crowreaper killed a creature (Weak Mortirex Prowler) with a value of 36 PED!
+2025-10-22 17:54:12 [System] [] You received Vibrant Sweat x (2) Value: 0.0000 PED
+2025-10-04 12:04:52 [System] [] You inflicted 1.2 points of damage
+2025-10-04 12:04:52 [Globals] [] Aadu dRifteR Asi killed a creature (Nexnecis Old Alpha) with a value of 80 PED!
+2025-10-04 12:04:53 [System] [] You have gained 0.8527 Dexterity
+2025-10-04 12:04:53 [System] [] You have gained 0.8527 Perception
+2025-10-04 12:04:53 [System] [] You inflicted 1.6 points of damage
+2025-10-26 18:18:15 [System] [] You healed yourself 3.4 points
+2025-10-26 17:58:06 [System] [] The target Dodged your attack
+2025-10-08 17:42:12 [Globals] [] Team &quot;(Shared Loot)&quot; killed a creature (Noroosh) with a value of 131 PED!
+2025-10-04 12:04:53 [System] [] You received Scrap Metal x (1) Value: 0.0100 PED
+2025-10-04 12:04:53 [System] [] You received Robot Component Residue x (2) Value: 0.0200 PED
+2025-10-04 12:04:53 [System] [] You received Shrapnel x (1) Value: 0.0001 PED
+2025-10-25 20:59:49 [System] [] The target Dodged your attack
+2025-10-26 23:41:11 [System] [] The target Evaded your attack
+2025-10-26 23:42:15 [System] [] Your Psyche has improved by 0.3119
+2025-11-02 23:27:45 [System] [] You have gained 0.4168 Courage
+2025-11-02 23:27:45 [System] [] Your Strength has improved by 0.3655
+2025-11-03 04:34:32 [System] [] You have gained 0.4276 Bravado
+2025-11-03 04:34:25 [System] [] You have gained a new rank in Strength!
+
+Test them here
+https://regex101.com/

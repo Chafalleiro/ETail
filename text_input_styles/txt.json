@@ -1,0 +1,67 @@
+{
+  "TEntry": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "fieldbackground": "#004000",
+    "font_family": "IBM Plex Mono Text",
+    "font_size": "9",
+    "padding_x": "5",
+    "padding_y": "2",
+    "bordercolor": "#cccccc",
+    "focuscolor": "#3498db",
+    "focus_bordercolor": "#008000",
+    "focus_fieldbackground": "#008000",
+    "hover_bordercolor": "#2c3e50"
+  },
+  "Modern.TEntry": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "fieldbackground": "#004000",
+    "font_family": "IBM Plex Mono Text",
+    "font_size": "9",
+    "padding_x": "5",
+    "padding_y": "2",
+    "bordercolor": "#00ff00",
+    "focuscolor": "#2980b9",
+    "focus_bordercolor": "#2980b9",
+    "focus_fieldbackground": "#008000",
+    "hover_bordercolor": "#2c3e50"
+  },
+  "TCombobox": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "fieldbackground": "#004000",
+    "font_family": "Courier New",
+    "font_size": "9",
+    "padding_x": "5",
+    "padding_y": "2",
+    "arrowcolor": "#00ff00",
+    "bordercolor": "#cccccc",
+    "focus_bordercolor": "#ff00ff",
+    "focus_fieldbackground": "#008000",
+    "hover_bordercolor": "#ff0080"
+  },
+  "Text": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "font_family": "IBM Plex Mono Text",
+    "font_size": "12",
+    "padding_x": "5",
+    "padding_y": "5",
+    "selectbackground": "#008000",
+    "selectforeground": "#ffffff",
+    "insertbackground": "#ffffff",
+    "relief": "solid",
+    "borderwidth": "1"
+  },
+  "Listbox": {
+    "background": "#004000",
+    "foreground": "#00ff00",
+    "font_family": "Arial",
+    "font_size": "9",
+    "selectbackground": "#008000",
+    "selectforeground": "#ffffff",
+    "relief": "solid",
+    "borderwidth": "1"
+  }
+}

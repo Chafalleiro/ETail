@@ -1,26 +1,111 @@
 try:
-    # Try to import from plugins package (source mode)
     from plugins.etail_plugin import ETailPlugin
 except ImportError:
-    try:
-        # Try direct import (compiled mode)
-        from etail_plugin import ETailPlugin
-    except ImportError:
-        # Fallback: define it here
-        from abc import ABC, abstractmethod
-        class ETailPlugin(ABC):
-            def __init__(self, app):
-                self.app = app
+    # Fallback: define it here if not found
+    from abc import ABC, abstractmethod
+    import json  # ADD THIS IMPORT
+    import sys   # ADD THIS IMPORT
+    from pathlib import Path  # ADD THIS IMPORT
+
+    class ETailPlugin(ABC):
+        def __init__(self, app):
+            self.app = app
+            # Only set default name if not already set by subclass
+            if not hasattr(self, 'name') or getattr(self, 'name', None) == "Unnamed Plugin":
                 self.name = "Unnamed Plugin"
+            if not hasattr(self, 'version'):
                 self.version = "1.0" 
-                self.description = "No description provided"
-                self.enabled = False
+            if not hasattr(self, 'description'):
+                self.description = "No description provided"            
+
+            # Instance identification
+            self.instance_id = getattr(app, 'instance_id', 'standalone')
+            print(f"DEBUG: Plugin {self.name} loaded for instance: {self.instance_id}")
+            
+            # Instance-specific configuration
+            self.config = self.load_config()
+
+        def load_config(self):
+            """Load instance-specific configuration - FIXED with better error handling"""
+            config_path = self.get_config_path()
+            print(f"DEBUG: Attempting to load config from: {config_path}")
+            print(f"DEBUG: Config file exists: {config_path.exists()}")
+            
+            if config_path.exists():
+                try:
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                        print(f"DEBUG: Config file content length: {len(content)}")
+
+                        if not content:
+                            print(f"DEBUG: Config file is empty")
+                            default_config = self.get_default_config()
+                            print(f"DEBUG: Using default config for {self.name} in instance {self.instance_id}")
+                            return default_config
+                        
+                        config = json.loads(content)
+                        print(f"DEBUG: Successfully loaded config for {self.name} from {config_path}")
+                        print(f"DEBUG: Config keys: {list(config.keys()) if config else 'None'}")
+                        return config
+                        
+                except json.JSONDecodeError as e:
+                    print(f"DEBUG: JSON decode error in config for {self.name}: {e}")
+                    print(f"DEBUG: Problematic content: '{content}'")
+                except Exception as e:
+                    print(f"DEBUG: Error loading config for {self.name}: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # Return default config if no instance-specific config exists or there was an error
+            default_config = self.get_default_config()
+            print(f"DEBUG: Using default config for {self.name} in instance {self.instance_id}")
+            return default_config
+
+        def save_config(self):
+            """Save instance-specific configuration"""
+            config_path = self.get_config_path()
+            try:
+                config_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.config, f, indent=2, ensure_ascii=False)
+                print(f"DEBUG: Saved config for {self.name} to {config_path}")
+                return True
+            except Exception as e:
+                print(f"DEBUG: Error saving config for {self.name}: {e}")
+                return False
+        
+        def get_config_path(self):
+            """Get instance-specific config file path"""
+            # Use the plugin manager's config directory
+            if hasattr(self.app, 'plugin_manager') and hasattr(self.app.plugin_manager, 'plugin_config_dir'):
+                return self.app.plugin_manager.plugin_config_dir / f"{self.name}.json"
+            else:
+                # Fallback
+                if getattr(sys, 'frozen', False):
+                    base_dir = Path(sys.executable).parent
+                else:
+                    base_dir = Path(__file__).parent
                 
-            @abstractmethod
-            def setup(self): pass
-                
-            @abstractmethod 
-            def teardown(self): pass
+                if hasattr(self.app, 'instance_id'):
+                    config_dir = base_dir / "instances" / self.app.instance_id / "plugins"
+                    config_dir.mkdir(parents=True, exist_ok=True)
+                    return config_dir / f"{self.name}.json"
+                else:
+                    config_dir = base_dir / "plugins" / "config"
+                    config_dir.mkdir(parents=True, exist_ok=True)
+                    return config_dir / f"{self.name}.json"
+        
+        def get_default_config(self):
+            """Override this to provide default configuration"""
+            return {}
+        
+        @abstractmethod
+        def setup(self): 
+            pass
+                    
+        @abstractmethod 
+        def teardown(self): 
+            pass
 
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -71,7 +156,7 @@ class FilterManager:
         try:
             # Combine active and saved filters
             all_filters = self.saved_filters.copy()
-            
+            print(f"DEBUG: all_filters {all_filters} filters from plugin config")            
             for filter_id, filter_config in self.active_filters.items():
                 # Don't save temporary test filters
                 if not filter_id.startswith('test_'):
@@ -110,6 +195,15 @@ class FilterManager:
         if filter_id in self.saved_filters:
             return self.saved_filters[filter_id]
         return None
+    def sync_to_plugin_config(self, plugin):
+        """Sync filters to plugin configuration - minimal addition"""
+        try:
+            plugin.config['saved_filters'] = self.saved_filters
+            return plugin.save_config()
+        except Exception as e:
+            print(f"DEBUG: Sync to plugin config failed: {e}")
+            return False
+
 
 # =============================================================================
 # PATTERN GENERATORS - Fixed with proper delimiters and wildcards
@@ -834,18 +928,25 @@ class AnalyticsEngine:
 class DataExtractorPlugin(ETailPlugin):
 
     def __init__(self, app):
-        super().__init__(app)
+        # Set the name FIRST before calling super().__init__
         self.name = "Data Extractor"
         self.version = "1.6"
         self.description = "Pattern-based data extraction system"
         self.is_etail_plugin = True
+        
+        # Now call super().__init__ so the base class uses our actual name
+        super().__init__(app)
+        
+        # DEBUG: Show instance info
+        print(f"DEBUG: DataExtractorPlugin initialized for instance: {self.instance_id}")
+        print(f"DEBUG: Plugin config path: {self.get_config_path()}")
         
         # Initialize components
         self.field_manager = FieldManager(self)
         self.type_detector = TypeDetector()
         self.regex_builder = RegexBuilder(self.field_manager)
         self.analytics_engine = AnalyticsEngine(self.app)
-        self.filter_manager = FilterManager(self)  # REPLACES active_filters
+        self.filter_manager = FilterManager(self)
         
         # Plugin state
         self.sample_line = ""
@@ -860,34 +961,60 @@ class DataExtractorPlugin(ETailPlugin):
         self.register_button = None
 
     def setup(self):
-        """Setup the plugin - load saved filters"""
-        self.app.messages(2, 9, "Data Extractor plugin enabled")
+        """Setup the plugin - use filename-based identifier for registration"""
+        print(f"DEBUG: Setting up Data Extractor for instance {self.instance_id}")
+        
+        # The plugin manager uses the filename (without extension) as the identifier
+        # For a file named "data_extractor_plugin.py", the identifier is "data_extractor_plugin"
+        self.plugin_filename = "data_extractor_plugin"
+        
+        print(f"🎯 USING PLUGIN FILENAME: '{self.plugin_filename}' for filter registration")
+        print(f"🎯 PLUGIN DISPLAY NAME: '{self.name}'")
 
-        # Initialize filter name mapping
-        self.filter_name_to_id = {}
-    
-        # Load and register saved filters
+        # Load and register filters
+        self.filter_manager.saved_filters = self.config
+        self.filter_manager.active_filters = self.config.copy()
+        
+        print(f"DEBUG: Loaded {len(self.config)} filters from instance {self.instance_id} config")
         self.load_saved_filters()
         
-        # Update all selectors
+        # Update GUI
         if hasattr(self, 'update_filter_selectors'):
-            self.update_filter_selectors()
+            self.app.root.after(500, self.update_filter_selectors)
+    
+        self.app.messages(2, 9, f"Data Extractor plugin enabled for instance {self.instance_id}")
+        
+
+    def debug_plugin_registration(self):
+        """Debug how the plugin is being registered"""
+        print(f"\n=== PLUGIN REGISTRATION DEBUG ===")
+        print(f"Plugin class name: {self.__class__.__name__}")
+        print(f"Plugin instance name: {self.name}")
+        print(f"Plugin version: {self.version}")
+        print(f"Instance ID: {self.instance_id}")
+        print(f"Config path: {self.get_config_path()}")
+        
+        # Check if main app sees us correctly
+        if hasattr(self.app, 'plugins') and self.name in self.app.plugins:
+            print(f"✅ Registered in main app as: {self.name}")
+        else:
+            print(f"❌ NOT found in main app plugins")
+            if hasattr(self.app, 'plugins'):
+                print(f"Available plugins: {list(self.app.plugins.keys())}")
+        print("==================================\n")
 
     def check_gui_initialization(self):
-        """Check if all GUI elements are properly initialized"""
-        print(f"🔍 DEBUG: Checking GUI Initialization")
+        """Check if all GUI elements are properly initialized WITH INSTANCE INFO"""
+        print(f"🔍 DEBUG: Checking GUI Initialization for instance {self.instance_id}")
         
         elements_to_check = [
-            ('summary_label', 'Summary Label'),
             ('raw_text', 'Raw Text Widget'),
             ('pl_summary_text', 'Profit/Loss Summary Text'),
             ('pl_details_tree', 'Profit/Loss Details Tree'),
             ('group_filter_selector', 'Group Filter Selector'),
             ('group_field_selector', 'Group Field Selector'),
             ('grouped_tree', 'Grouped Tree View'),
-            ('data_table', 'Data Table'),
             ('filters_tree', 'Filters Tree'),
-            ('variables_text', 'Variables Text')
         ]
         
         for attr, description in elements_to_check:
@@ -898,74 +1025,92 @@ class DataExtractorPlugin(ETailPlugin):
                 print(f"   {description}: {'✅ EXISTS' if not is_none else '❌ EXISTS BUT NONE'}")
             else:
                 print(f"   {description}: ❌ NOT FOUND")
-        
-        # Check analytics structure
-        if hasattr(self, 'analytics_structure'):
-            if self.analytics_structure:
-                record_count = len(self.analytics_structure.get('data', []))
-                print(f"   Analytics Structure: ✅ EXISTS with {record_count} records")
-            else:
-                print(f"   Analytics Structure: ❌ EXISTS BUT EMPTY")
-        else:
-            print(f"   Analytics Structure: ❌ NOT FOUND")
 
     def load_saved_filters(self):
-        """Load and register all saved filters"""
-        loaded_count = 0
-    
-        for filter_id, filter_config in self.filter_manager.saved_filters.items():
-            try:
-
-                # DEBUG: Check what we're loading
-                print(f"=== LOADING FILTER {filter_id} ===")
-                field_definitions = filter_config.get('field_definitions', {})
-                for field_name, field_info in field_definitions.items():
-                    print(f"  {field_name}: index={field_info.get('index', 'MISSING')}, type={field_info.get('data_type')}")
+        """Load and register all saved filters - FIXED for instance isolation"""
+        try:
+            # Use the instance-specific config directly
+            saved_filters = self.config
+            loaded_count = 0
             
-                # Register with main app
-                success = self.app.register_plugin_filter(
-                    self.name,
-                    filter_config['regex'],
-                    filter_id,
-                    self.on_plugin_filter_match
-                )
+            print(f"DEBUG: Attempting to load {len(saved_filters)} saved filters for instance {self.instance_id}")
             
-                if success:
-                    self.filter_manager.active_filters[filter_id] = filter_config
-                    loaded_count += 1
+            for filter_id, filter_config in saved_filters.items():
+                try:
+                    print(f"=== LOADING FILTER {filter_id} FOR INSTANCE {self.instance_id} ===")
+                    
+                    # Validate filter configuration
+                    if not isinstance(filter_config, dict) or 'regex' not in filter_config:
+                        print(f"DEBUG: Skipping invalid filter {filter_id}")
+                        continue
+                    
+                    # Register with main app
+                    success = self.app.register_plugin_filter(
+                        self.plugin_filename,
+                        filter_config['regex'],
+                        filter_id,
+                        self.on_plugin_filter_match
+                    )
                 
-            except Exception as e:
-                print(f"Error loading filter {filter_id}: {e}")
-    
-        if loaded_count > 0:
-            self.app.messages(2, 9, f"Loaded {loaded_count} saved filters")
+                    if success:
+                        # Also add to active filters
+                        self.filter_manager.active_filters[filter_id] = filter_config
+                        loaded_count += 1
+                        print(f"DEBUG: Successfully loaded and registered filter {filter_id}")
+                    else:
+                        print(f"DEBUG: Failed to register filter {filter_id} with main app")
+                    
+                except Exception as e:
+                    print(f"Error loading filter {filter_id} for instance {self.instance_id}: {e}")
+        
+            if loaded_count > 0:
+                self.app.messages(2, 9, f"Loaded {loaded_count} saved filters for instance {self.instance_id}")
+            else:
+                print(f"DEBUG: No filters were successfully loaded for instance {self.instance_id}")
+                
+        except Exception as e:
+            print(f"DEBUG: Error in load_saved_filters for instance {self.instance_id}: {e}")
 
     def teardown(self):
-        """Teardown the plugin - cleanup filters and widgets"""
+        """Teardown the plugin - PROPERLY save filters to instance config"""
         try:
-            # Try to remove all active filters from main app
+            print(f"DEBUG: Tearing down Data Extractor for instance {self.instance_id}")
+            
+            # Save filters directly to config (replace entire config with filters)
+            # This ensures instance isolation
+            self.config = self.filter_manager.saved_filters.copy()
+            self.config.update(self.filter_manager.active_filters)
+            
+            # Remove any temporary test filters
+            temp_filters = [fid for fid in self.config.keys() if fid.startswith('test_')]
+            for temp_filter in temp_filters:
+                del self.config[temp_filter]
+                
+            save_result = self.save_config()
+            
+            if save_result:
+                print(f"DEBUG: Successfully saved {len(self.config)} filters to instance {self.instance_id} config")
+            else:
+                print(f"DEBUG: Failed to save config for instance {self.instance_id}")
+            
+            # Remove filters from main app
             for filter_id in list(self.filter_manager.active_filters.keys()):
                 try:
                     self.app.remove_plugin_filter(self.name, filter_id)
-                except AttributeError:
-                    # Main app might not have remove_plugin_filter method
-                    print(f"Note: Main app doesn't support remove_plugin_filter for {filter_id}")
+                    print(f"DEBUG: Removed filter {filter_id} from instance {self.instance_id}")
                 except Exception as e:
                     print(f"Error removing filter {filter_id}: {e}")
-    
-            # Save filters before shutdown
-            self.filter_manager.save_filters()
-        
-            # Clear widget references to prevent TclError
+            
+            # Clear widget references
             self._clear_widget_references()
-    
+            
         except Exception as e:
-            print(f"Error during plugin teardown: {e}")
-    
-        self.app.messages(2, 9, "Data Extractor disabled")
+            print(f"Error during plugin teardown for instance {self.instance_id}: {e}")
+        
+        self.app.messages(2, 9, f"Data Extractor disabled for instance {self.instance_id}")
 
     def register_filter(self):
-        """Register the generated regex as a plugin filter with persistence"""
+        """Register the generated regex as a plugin filter"""
         if (not hasattr(self.regex_builder, 'generated_regex') or 
             not self.regex_builder.generated_regex or
             self.regex_builder.generated_regex.startswith("#")):
@@ -977,16 +1122,16 @@ class DataExtractorPlugin(ETailPlugin):
         if not filter_name:
             return  # User canceled
             
-        filter_id = f"data_extractor_{datetime.now().strftime('%H%M%S')}"
+        filter_id = f"data_extractor_{self.instance_id}_{datetime.now().strftime('%H%M%S')}"
         
         # Get current field configuration
         field_definitions = {}
         if hasattr(self, 'analytics_structure'):
             field_definitions = self.analytics_structure.get('fields', {})
         
-        # UPDATED: Enhanced filter configuration with NEW profit/loss structure
+        # Enhanced filter configuration
         filter_config = {
-            'name': filter_name,  # User-friendly name
+            'name': filter_name,
             'regex': self.regex_builder.generated_regex,
             'field_definitions': field_definitions,
             'field_names': list(field_definitions.keys()),
@@ -994,12 +1139,9 @@ class DataExtractorPlugin(ETailPlugin):
             'created_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'last_used': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'match_count': 0,
-            'description': self.ask_filter_description(),  # Optional description
-            
-            # COMPLETELY UPDATED: New profit/loss structure with multiple concepts
+            'description': self.ask_filter_description(),
             'profit_loss': {
-                'enabled': False,  # Master switch - turns all concepts on/off
-                
+                'enabled': False,
                 # Array of up to 3 concepts
                 'concepts': [
                     # Concept 1
@@ -1038,24 +1180,28 @@ class DataExtractorPlugin(ETailPlugin):
                 ]
             }
         }
-        
-        # Register with main app
+
+        # Register with main app USING FILENAME IDENTIFIER
         success = self.app.register_plugin_filter(
-            self.name, 
+            self.plugin_filename,  # Use the filename identifier!
             self.regex_builder.generated_regex, 
             filter_id,
             self.on_plugin_filter_match
         )
-        
+    
         if success:
             # Save to filter manager
-            self.filter_manager.save_filter(filter_id, filter_config)
+            self.filter_manager.saved_filters[filter_id] = filter_config
+            self.filter_manager.active_filters[filter_id] = filter_config
             
-            self.app.messages(2, 9, f"Filter '{filter_name}' registered and saved")
+            # Save the entire config (which is now the filters)
+            self.config = self.filter_manager.saved_filters
+            save_success = self.save_config()
             
-            # Update filter management UI if it exists
-            if hasattr(self, 'update_filters_display'):
-                self.update_filters_display()
+            if save_success:
+                self.app.messages(2, 9, f"Filter '{filter_name}' registered and saved for instance {self.instance_id}")
+            else:
+                self.app.messages(2, 3, "Filter registered but failed to save to configuration")
         else:
             self.app.messages(2, 3, "Failed to register filter with main application")
 
@@ -1240,7 +1386,7 @@ class DataExtractorPlugin(ETailPlugin):
         else:
             print("❌ FAILED: Plugin did not process test data")
 
-    def on_plugin_filter_match(self, filter_id, matches, original_line):
+    def on_plugin_filter_match(self, filter_id, matches, original_line, instance_id):
         """Handle matches from multiple plugin filters - FIXED ANALYTICS STRUCTURE"""
         print(f"🚀 DEBUG: on_plugin_filter_match CALLED")
         print(f"   Filter: {filter_id}")
@@ -1394,30 +1540,6 @@ class DataExtractorPlugin(ETailPlugin):
             return notebook
         
         return create_widget
-    
-    def _clear_widget_references(self):
-        """Clear widget references to prevent TclError when reopening GUI"""
-        # List of widget attributes that should be cleared
-        widget_attributes = [
-            'summary_label', 'raw_text', 'pl_summary_text', 'pl_details_tree',
-            'group_filter_selector', 'group_field_selector', 'grouped_tree',
-            'data_table', 'filters_tree', 'variables_text', 'data_filter_selector',
-            'stats_filter_selector', 'export_filter_selector', 'stats_group_selector',
-            'filter_data_tree', 'summary_stats_text', 'grouped_stats_tree', 
-            'time_series_text', 'export_log_text', 'regex_input', 'sample_input',
-            'results_text', 'field_selection_btn', '_current_notebook'
-        ]
-        
-        for attr in widget_attributes:
-            if hasattr(self, attr):
-                try:
-                    # Check if widget still exists before trying to clear reference
-                    widget = getattr(self, attr)
-                    if widget and hasattr(widget, 'winfo_exists') and not widget.winfo_exists():
-                        setattr(self, attr, None)
-                except (tk.TclError, AttributeError):
-                    # Widget is already destroyed, clear the reference
-                    setattr(self, attr, None)
 
     def create_regex_builder(self, parent):
         """Create simplified regex builder interface"""
@@ -1804,9 +1926,9 @@ class DataExtractorPlugin(ETailPlugin):
         text_widget.config(state=tk.DISABLED)
         
         ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
-
+    
     def update_analytics_display(self):
-        """Simple update that works with minimal GUI"""
+        """Simple update that works with minimal GUI - FIXED selector check"""
         print("🔄 DEBUG: update_analytics_display called")
         
         # Update summary if it exists
@@ -1828,19 +1950,26 @@ class DataExtractorPlugin(ETailPlugin):
             else:
                 self.summary_label.config(text="No data available")
     
-        # Update filter selectors
+        # Update filter selectors FIRST
         self.update_filter_selectors()
     
-        # Update current views if they exist - FIXED: Only call if we have a selected filter
-        if hasattr(self, 'data_filter_selector') and self.data_filter_selector.get():
+        # Update current views if they exist - ONLY if we have selectors with values
+        if (hasattr(self, 'data_filter_selector') and self.data_filter_selector and 
+            self.data_filter_selector.get() and hasattr(self, 'filter_name_to_id')):
+            
             selected_name = self.data_filter_selector.get()
-            if hasattr(self, 'filter_name_to_id') and selected_name in self.filter_name_to_id:
+            if selected_name in self.filter_name_to_id:
                 filter_id = self.filter_name_to_id[selected_name]
                 self.update_filter_data_view(filter_id)
-        
-        if hasattr(self, 'stats_filter_selector') and self.stats_filter_selector.get():
+            else:
+                print(f"❌ DEBUG: Selected name '{selected_name}' not in filter_name_to_id")
+    
+        # Similar check for stats filter
+        if (hasattr(self, 'stats_filter_selector') and self.stats_filter_selector and 
+            self.stats_filter_selector.get() and hasattr(self, 'filter_name_to_id')):
+            
             selected_name = self.stats_filter_selector.get()
-            if hasattr(self, 'filter_name_to_id') and selected_name in self.filter_name_to_id:
+            if selected_name in self.filter_name_to_id:
                 filter_id = self.filter_name_to_id[selected_name]
                 self.update_statistics_view(filter_id)
     
@@ -2622,7 +2751,39 @@ class DataExtractorPlugin(ETailPlugin):
         self.filter_manager.saved_filters = self.filter_manager.load_filters()
         self.update_filters_display()
         self.app.messages(2, 9, "Filters reloaded from disk")
-    
+
+    def save_filters_to_config(self):
+        """Save all filters to instance-specific plugin configuration"""
+        try:
+            # Convert active filters to saveable format
+            saved_filters = {}
+            for filter_id, filter_config in self.filter_manager.active_filters.items():
+                # Ensure we have a clean copy without UI references
+                clean_config = {
+                    'name': filter_config.get('name', ''),
+                    'regex': filter_config.get('regex', ''),
+                    'field_definitions': filter_config.get('field_definitions', {}),
+                    'field_names': filter_config.get('field_names', []),
+                    'sample_line': filter_config.get('sample_line', ''),
+                    'created_at': filter_config.get('created_at', ''),
+                    'last_used': filter_config.get('last_used', ''),
+                    'match_count': filter_config.get('match_count', 0),
+                    'description': filter_config.get('description', ''),
+                    'profit_loss': filter_config.get('profit_loss', {})
+                }
+                saved_filters[filter_id] = clean_config
+            
+            # Save to plugin configuration
+            self.config['saved_filters'] = saved_filters
+            self.save_config()
+            
+            print(f"DEBUG: Saved {len(saved_filters)} filters to instance {self.instance_id} config")
+            return True
+            
+        except Exception as e:
+            print(f"DEBUG: Error saving filters to config for instance {self.instance_id}: {e}")
+            return False
+
     def save_all_filters(self):
         """Save all active filters to disk"""
         if self.filter_manager.save_filters():
@@ -3709,20 +3870,7 @@ class DataExtractorPlugin(ETailPlugin):
             # Clear existing items
             for item in self.filters_tree.get_children():
                 self.filters_tree.delete(item)
-            
-            # Update group filter selector if it exists
-            if hasattr(self, 'group_filter_selector') and self.group_filter_selector:
-                try:
-                    filters = list(self.filter_manager.active_filters.keys())
-                    self.group_filter_selector['values'] = filters
-                    if filters and not self.group_filter_selector.get():
-                        self.group_filter_selector.set(filters[0])
-                except tk.TclError:
-                    print("❌ DEBUG: group_filter_selector widget destroyed, skipping update")
-                    return
-            else:
-                print("❌ DEBUG: group_filter_selector not available")
-            
+
             # Add all filters
             all_filters = self.filter_manager.get_all_filters()
             
@@ -4526,6 +4674,41 @@ class DataExtractorPlugin(ETailPlugin):
                     print(f"     Is profit: {concept.get('is_profit', True)}")
         else:
             print(f"   ❌ Profit/Loss not enabled for this filter")
+
+    def debug_instance_isolation(self):
+        """Debug method to check instance isolation"""
+        print(f"\n=== INSTANCE ISOLATION DEBUG: {self.name} ===")
+        print(f"Instance ID: {self.instance_id}")
+        print(f"Config Path: {self.get_config_path()}")
+        print(f"Config Exists: {self.get_config_path().exists()}")
+        
+        # Check current config
+        print(f"Config Keys: {list(self.config.keys()) if self.config else 'None'}")
+        print(f"Saved Filters: {len(self.filter_manager.saved_filters)}")
+        print(f"Active Filters: {len(self.filter_manager.active_filters)}")
+        
+        # List all saved filters
+        for filter_id, config in self.filter_manager.saved_filters.items():
+            print(f"  - {config.get('name', 'Unnamed')} ({filter_id}): {config.get('match_count', 0)} matches")
+        
+        print("========================================\n")
+
+    def _clear_widget_references(self):
+        """Clear widget references to prevent TclError during teardown"""
+        # Clear all UI references that might cause TclError
+        ui_references = [
+            'sample_text', 'delimiter_var', 'regex_text', 'explanation_text',
+            'fields_container', 'test_button', 'register_button', 'summary_label',
+            'raw_text', 'pl_summary_text', 'pl_details_tree', 'group_filter_selector',
+            'group_field_selector', 'grouped_tree', 'data_table', 'filters_tree',
+            'variables_text'
+        ]
+        
+        for ref in ui_references:
+            if hasattr(self, ref):
+                setattr(self, ref, None)
+        
+        print(f"DEBUG: Cleared widget references for instance {self.instance_id}")
 
 # =============================================================================
 # TOOLTIP AND HELPER FUNCTIONS

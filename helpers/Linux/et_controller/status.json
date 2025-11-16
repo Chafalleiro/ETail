@@ -1,0 +1,26 @@
+{
+  "last_update": "2025-11-14 17:29:35",
+  "managed_services": [],
+  "managed_processes": [
+    {
+      "name": "ETail Log Monitor",
+      "pid": null,
+      "status": "stopped"
+    },
+    {
+      "name": "ETail Log Monitor",
+      "pid": null,
+      "status": "stopped"
+    },
+    {
+      "name": "ETail Hardware Monitor 1",
+      "pid": null,
+      "status": "stopped"
+    },
+    {
+      "name": "ETail Hardware Monitor 2",
+      "pid": null,
+      "status": "stopped"
+    }
+  ]
+}

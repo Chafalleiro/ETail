@@ -1,13 +1,23 @@
 {
-  "version": "1.1",
-  "filters": [
-    {
-      "pattern": "Default filter",
-      "is_regex": false,
-      "fg_color": "black",
-      "bg_color": "yellow",
-      "action": "none",
-      "action_modifier": ""
-    }
-  ]
+  "log_file": "C:\\Users\\amdgr\\Documents\\Entropia Universe\\chat.log",
+  "initial_lines": 55,
+  "refresh_interval": 100,
+  "auto_load_config": true,
+  "last_directory": "C:\\vhost\\Repositorios\\ETail\\filters",
+  "filters_file": "C:\\vhost\\Repositorios\\ETail\\filters\\eu_simple_filters.json",
+  "advanced_filters_file": "C:/vhost/Repositorios/ETail/filters/adv_filters_example.json",
+  "recent_filters": [
+    "C:\\vhost\\Repositorios\\ETail\\filters\\eu_simple_filters.json",
+    "C:/vhost/Repositorios/ETail/filters/eu_simple_filters.json",
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\test_filters.json",
+    "C:/Users/amdgr/Documents/Entropia Universe/test_filters.json",
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\default_filters.json"
+  ],
+  "recent_advanced_filters": [
+    "C:/vhost/Repositorios/ETail/filters/adv_filters_example.json",
+    "C:\\vhost\\Repositorios\\ETail\\filters\\adv_filters_example.json",
+    "C:\\Users\\amdgr\\Documents\\Entropia Universe\\adv_filters.json",
+    "C:/Users/amdgr/Documents/Entropia Universe/adv_filters.json"
+  ],
+  "verbose": false
 }

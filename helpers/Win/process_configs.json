@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Myst",
+    "type": "service_monitor",
+    "host": "127.0.0.1",
+    "port": 21327,
+    "password": "patata",
+    "service_name": "",
+    "exe_name": "",
+    "log_type": "Application",
+    "netstat_threshold": 5,
+    "poll_interval": 5,
+    "use_ssl": true,
+    "run_as_admin": true
+  }
+]

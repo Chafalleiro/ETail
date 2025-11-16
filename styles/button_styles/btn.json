@@ -1,0 +1,92 @@
+{
+  "TButton": {
+    "normal": {
+      "background": "#007100",
+      "foreground": "#00ff00"
+    },
+    "active": {
+      "background": "#008000",
+      "foreground": "#80ff00"
+    },
+    "pressed": {
+      "background": "#008040",
+      "foreground": "#80ff00"
+    },
+    "disabled": {
+      "background": "#808080",
+      "foreground": "#d3d3d3"
+    }
+  },
+  "Primary.TButton": {
+    "normal": {
+      "background": "#008080",
+      "foreground": "#ffffff"
+    },
+    "active": {
+      "background": "#00c663",
+      "foreground": "#ffffff"
+    },
+    "pressed": {
+      "background": "#34495e",
+      "foreground": "#ffffff"
+    },
+    "disabled": {
+      "background": "#808080",
+      "foreground": "#c0c0c0"
+    }
+  },
+  "Success.TButton": {
+    "normal": {
+      "background": "#27ae60",
+      "foreground": "#ffffff"
+    },
+    "active": {
+      "background": "#2c3e50",
+      "foreground": "#ffffff"
+    },
+    "pressed": {
+      "background": "#34495e",
+      "foreground": "#ffffff"
+    },
+    "disabled": {
+      "background": "#808080",
+      "foreground": "#c0c0c0"
+    }
+  },
+  "Warning.TButton": {
+    "normal": {
+      "background": "#f39c12",
+      "foreground": "#000000"
+    },
+    "active": {
+      "background": "#f39c12",
+      "foreground": "#000000"
+    },
+    "pressed": {
+      "background": "#e67e22",
+      "foreground": "#000000"
+    },
+    "disabled": {
+      "background": "#808080",
+      "foreground": "#c0c0c0"
+    }
+  },
+  "Danger.TButton": {
+    "normal": {
+      "background": "#e74c3c",
+      "foreground": "#ffffff"
+    },
+    "active": {
+      "background": "#2c3e50",
+      "foreground": "#ffffff"
+    },
+    "pressed": {
+      "background": "#34495e",
+      "foreground": "#ffffff"
+    },
+    "disabled": {
+      "background": "#808080",
+      "foreground": "#c0c0c0"
+    }
+  }
+}

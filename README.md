@@ -2,7 +2,7 @@
 
 Entropia Universe Logging Tool. Now more flexible and capable of monitoring every kind of text logfiles, not just the game chat log. Binary logs are out of the scope of this program.
 
-V0.2 October 2025.
+V0.3 November 2025.
 
 Features:
 
@@ -14,6 +14,11 @@ Features:
 * Configurable alerts, Text to speech, sound alert, system notifications or popup windows.
 * Configuration and filters load and save in separate files to have several configurations for each kind of log monitoring.
 * Matching lines can be hidden from display.
+* Tabbed interface for loggin multiple files.
+* Server Log monitorig. Lauch a server to receive text data from the net.
+* Instanced plugins, servers and monitored logs. Each tab run separately.
+* Helpers in Windows and Linux to monitor logs, events, services and hardware metrics.
+
 
 This tool comes in two ways, a python script that can be used within a system with Python installed, or a standalone compiled exe (ATM only windows 64 version) that can be downloaded from the releases section. The precompiled plugins are also there.
 
@@ -214,18 +219,54 @@ The application comes with three plugins. A sample plugin, an OCR monitoring plu
 
 
 TODO:
-* Skinning and styling the app.
 * Keep cleaning the code and bug hunting.
-* Documentation for plugin making, regular expression creation and general use.
+* Documentation for plugin making, regular expression creation and general use. More documentation needed now.
 * Help system and popup tags.
 * Cleanup and adjust the GUI.
 * Refactor the code.
 * Get rid of Pyautogui to downsize the exe.
 * Remake some parts of the regex creator. It needs to be more intuitive and complete.
 * Activation routines for simple filters.
+* Activity monitor plugin.
+* Linux port of main app and data extractor.
+* Linux OCR
+
 
 Totally rewritten from HTA to Python. 
 Authors Deepseek AI and Alfonso Abelenda Escudero.
 
+Releases section will have all the compiled binaries.
+
 Old 0.11 version installer and sources can be downloaded from here ATM
 https://github.com/Chafalleiro/ETMaps/releases/tag/ETMAPS
+
+Also take a look here.
+
+https://arachnoid.com/careware/index.html
+
+Changelog:
+
+0.3 November 2025
+
+Instanced tabbed monitoring.
+
+HTTPS server.
+
+Styling system.
+
+Main app has reached its final form.
+
+Helpers for server.
+
+0.21 October 2025
+
+Data extractor plugin.
+
+0.2 October 2025
+Reworked 0.11 into Python
+
+Changed regex creation.
+
+Plugin system.
+
+OCR plugin.
